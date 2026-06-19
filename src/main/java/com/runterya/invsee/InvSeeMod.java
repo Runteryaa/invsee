@@ -37,11 +37,66 @@ public class InvSeeMod implements ModInitializer {
     private void registerCommands(CommandDispatcher<CommandSourceStack> dispatcher, CommandBuildContext registryAccess) {
         dispatcher.register(Commands.literal("invsee")
             .requires(source -> source.permissions().hasPermission(net.minecraft.server.permissions.Permissions.COMMANDS_GAMEMASTER))
+            .executes(context -> {
+                CommandSourceStack source = context.getSource();
+                ServerPlayer user = source.getPlayerOrException();
+                
+                File playerDataDir = source.getServer().getWorldPath(net.minecraft.world.level.storage.LevelResource.PLAYER_DATA_DIR).toFile();
+                if (!playerDataDir.exists()) {
+                    source.sendFailure(Component.literal("No player data found!"));
+                    return 0;
+                }
+
+                java.util.List<com.mojang.authlib.GameProfile> allPlayers = new java.util.ArrayList<>();
+                
+                for (ServerPlayer p : source.getServer().getPlayerList().getPlayers()) {
+                    if (p != user) {
+                        allPlayers.add(p.getGameProfile());
+                    }
+                }
+                
+                File[] files = playerDataDir.listFiles((dir, name) -> name.endsWith(".dat"));
+                if (files != null) {
+                    for (File file : files) {
+                        try {
+                            String uuidStr = file.getName().substring(0, file.getName().length() - 4);
+                            java.util.UUID uuid = java.util.UUID.fromString(uuidStr);
+                            if (uuid.equals(user.getUUID())) continue;
+                            
+                            boolean alreadyAdded = allPlayers.stream().anyMatch(p -> p.getId().equals(uuid));
+                            if (!alreadyAdded) {
+                                com.mojang.authlib.GameProfile prof = source.getServer().getProfileCache().get(uuid).orElse(new com.mojang.authlib.GameProfile(uuid, uuidStr));
+                                allPlayers.add(prof);
+                            }
+                        } catch (Exception e) {}
+                    }
+                }
+
+                if (allPlayers.isEmpty()) {
+                    source.sendFailure(Component.literal("No other players found!"));
+                    return 0;
+                }
+
+                user.openMenu(new SimpleMenuProvider((syncId, playerInv, p) -> {
+                    return new PlayerListMenu(syncId, playerInv, allPlayers, 0, (selectedProfile) -> {
+                        openInvSee(source, user, new NameAndId(selectedProfile.getName(), selectedProfile.getId()), registryAccess);
+                    });
+                }, Component.literal("Player List")));
+
+                return 1;
+            })
             .then(Commands.argument("target", GameProfileArgument.gameProfile())
                 .executes(context -> {
                     CommandSourceStack source = context.getSource();
                     ServerPlayer user = source.getPlayerOrException();
                     NameAndId profile = GameProfileArgument.getGameProfiles(context, "target").iterator().next();
+                    return openInvSee(source, user, profile, registryAccess);
+                })
+            )
+        );
+    }
+
+    private int openInvSee(CommandSourceStack source, ServerPlayer user, NameAndId profile, CommandBuildContext registryAccess) {
 
                     ServerPlayer onlineTarget = source.getServer().getPlayerList().getPlayer(profile.id());
 
@@ -367,9 +422,6 @@ public class InvSeeMod implements ModInitializer {
                         source.sendFailure(Component.literal("Failed to load player data!"));
                     }
 
-                    return 1;
-                })
-            )
-        );
+                return 1;
     }
 }
