@@ -5,9 +5,13 @@
 	"name": "InvSee",
 	"description": "Allows seeing and editing other players' inventories.",
 	"authors": [
-		"InvSee"
+		"Runterya"
 	],
-	"contact": {},
+	"contact": {
+		"homepage": "https://modrinth.com/mod/invsee-",
+		"sources": "https://github.com/Runteryaa/invsee",
+		"issues": "https://github.com/Runteryaa/invsee/issues"
+	},
 	"license": "CC0-1.0",
 	"icon": "assets/invsee/icon.png",
 	"environment": "*",
