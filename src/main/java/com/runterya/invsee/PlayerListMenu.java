@@ -88,7 +88,6 @@ public class PlayerListMenu extends ChestMenu {
             ItemStack head = new ItemStack(Items.PLAYER_HEAD);
             head.set(DataComponents.PROFILE, new ResolvableProfile(profile));
             head.set(DataComponents.CUSTOM_NAME, Component.literal((isOnline ? "§a" : "§7") + profile.getName()));
-            head.set(DataComponents.LORE, new net.minecraft.world.item.component.ItemLore(java.util.List.of(Component.literal(isOnline ? "§a[Online]" : "§c[Offline]"))));
             container.setItem(i, head);
         }
 
@@ -104,10 +103,10 @@ public class PlayerListMenu extends ChestMenu {
             container.setItem(NEXT_SLOT, next);
         }
         
-        ItemStack info = new ItemStack(Items.PAPER);
-        info.set(DataComponents.CUSTOM_NAME, Component.literal("§bPage " + (page + 1) + " / " + totalPages));
+        ItemStack info = new ItemStack(isOnlinePage ? Items.LIME_CONCRETE : Items.RED_CONCRETE);
+        info.set(DataComponents.CUSTOM_NAME, Component.literal(isOnlinePage ? "§aOnline Players" : "§cOffline Players"));
         info.set(DataComponents.LORE, new net.minecraft.world.item.component.ItemLore(java.util.List.of(
-            Component.literal(isOnlinePage ? "§aShowing Online Players" : "§cShowing Offline Players")
+            Component.literal("§bPage " + (page + 1) + " / " + totalPages)
         )));
         container.setItem(22, info);
     }
