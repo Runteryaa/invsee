@@ -12,7 +12,7 @@ public class Config {
     private static final File CONFIG_FILE = new File(FabricLoader.getInstance().getConfigDir().toFile(), "invsee.json");
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     
-    public String language = "en";
+    public String language = "en_us";
 
     public static Config load() {
         if (CONFIG_FILE.exists()) {
