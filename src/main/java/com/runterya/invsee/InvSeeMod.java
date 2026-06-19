@@ -116,7 +116,7 @@ public class InvSeeMod implements ModInitializer {
 
                         int onlineXpLevel = onlineTarget.experienceLevel;
                         user.openMenu(new SimpleMenuProvider((syncId, playerInv, p) -> {
-                            return new InvSeeMenu(syncId, playerInv, targetInv, onlineXpAction, onlineOpenEnderChestAction, onlineTpAction, onlineCoords, onlineXpLevel);
+                            return new InvSeeMenu(syncId, playerInv, targetInv, onlineXpAction, onlineOpenEnderChestAction, onlineTpAction, onlineCoords, onlineXpLevel, onlineDim);
                         }, Component.literal(profile.name() + "'s Inventory")));
                         return 1;
                     }
@@ -342,7 +342,7 @@ public class InvSeeMod implements ModInitializer {
 
                         int offlineXpLevel = nbt.getInt("XpLevel").orElse(0);
                         user.openMenu(new SimpleMenuProvider((syncId, playerInv, p) -> {
-                            return new InvSeeMenu(syncId, playerInv, offlineInv, offlineXpAction, offlineOpenEnderChestAction, offlineTpAction, finalOfflineCoords, offlineXpLevel);
+                            return new InvSeeMenu(syncId, playerInv, offlineInv, offlineXpAction, offlineOpenEnderChestAction, offlineTpAction, finalOfflineCoords, offlineXpLevel, offlineDim);
                         }, Component.literal(profile.name() + "'s Offline Inv")));
                         
                     } catch (Exception e) {

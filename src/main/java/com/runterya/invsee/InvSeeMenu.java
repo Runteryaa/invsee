@@ -22,17 +22,19 @@ public class InvSeeMenu extends ChestMenu {
     private final String coordsText;
 
     public InvSeeMenu(int syncId, Inventory playerInv) {
-        this(syncId, playerInv, new SimpleContainer(41), () -> {}, () -> {}, () -> {}, "0 0 0", 0);
+        this(syncId, playerInv, new SimpleContainer(41), () -> {}, () -> {}, () -> {}, "0 0 0", 0, "minecraft:overworld");
     }
 
     private static class Wrapper implements Container {
         private final Container delegate;
         private final String coordsText;
         private final int targetXpLevel;
-        public Wrapper(Container delegate, String coordsText, int targetXpLevel) { 
+        private final String dimension;
+        public Wrapper(Container delegate, String coordsText, int targetXpLevel, String dimension) { 
             this.delegate = delegate;
             this.coordsText = coordsText;
             this.targetXpLevel = targetXpLevel;
+            this.dimension = dimension;
         }
         
         private int map(int slot) {
@@ -54,6 +56,7 @@ public class InvSeeMenu extends ChestMenu {
             if (slot == 6) {
                 ItemStack paper = new ItemStack(Items.PAPER);
                 paper.set(DataComponents.CUSTOM_NAME, Component.literal("§bLocation: " + this.coordsText));
+                paper.set(DataComponents.LORE, new net.minecraft.world.item.component.ItemLore(java.util.List.of(Component.literal("§7Dimension: " + this.dimension))));
                 return paper;
             }
             if (slot == 8) {
@@ -88,8 +91,8 @@ public class InvSeeMenu extends ChestMenu {
         public void stopOpen(net.minecraft.world.entity.ContainerUser user) { delegate.stopOpen(user); }
     }
 
-    public InvSeeMenu(int syncId, Inventory playerInv, Container target, Runnable xpTransferAction, Runnable openEnderChestAction, Runnable tpAction, String coordsText, int targetXpLevel) {
-        super(MenuType.GENERIC_9x5, syncId, playerInv, new Wrapper(target, coordsText, targetXpLevel), 5);
+    public InvSeeMenu(int syncId, Inventory playerInv, Container target, Runnable xpTransferAction, Runnable openEnderChestAction, Runnable tpAction, String coordsText, int targetXpLevel, String dimension) {
+        super(MenuType.GENERIC_9x5, syncId, playerInv, new Wrapper(target, coordsText, targetXpLevel, dimension), 5);
         this.xpTransferAction = xpTransferAction;
         this.openEnderChestAction = openEnderChestAction;
         this.tpAction = tpAction;
