@@ -21,8 +21,10 @@ public class InvSeeMenu extends ChestMenu {
     private final Runnable tpAction;
     private final String coordsText;
 
+    private final java.util.function.Consumer<Integer> statusAction;
+
     public InvSeeMenu(int syncId, Inventory playerInv) {
-        this(syncId, playerInv, new SimpleContainer(41), () -> {}, () -> {}, () -> {}, "0 0 0", 0, "minecraft:overworld");
+        this(syncId, playerInv, new SimpleContainer(41), () -> {}, () -> {}, () -> {}, "0 0 0", 0, "minecraft:overworld", null, b -> {});
     }
 
     private static class Wrapper implements Container {
@@ -30,11 +32,13 @@ public class InvSeeMenu extends ChestMenu {
         private final String coordsText;
         private final int targetXpLevel;
         private final String dimension;
-        public Wrapper(Container delegate, String coordsText, int targetXpLevel, String dimension) { 
+        private final java.util.List<Component> statusLore;
+        public Wrapper(Container delegate, String coordsText, int targetXpLevel, String dimension, java.util.List<Component> statusLore) { 
             this.delegate = delegate;
             this.coordsText = coordsText;
             this.targetXpLevel = targetXpLevel;
             this.dimension = dimension;
+            this.statusLore = statusLore;
         }
         
         private int map(int slot) {
@@ -53,6 +57,12 @@ public class InvSeeMenu extends ChestMenu {
         public int getContainerSize() { return 45; }
         public boolean isEmpty() { return delegate.isEmpty(); }
         public net.minecraft.world.item.ItemStack getItem(int slot) { 
+            if (slot == 5 && this.statusLore != null) {
+                ItemStack apple = new ItemStack(Items.GOLDEN_APPLE);
+                apple.set(DataComponents.CUSTOM_NAME, Component.literal("§cPlayer Status"));
+                apple.set(DataComponents.LORE, new net.minecraft.world.item.component.ItemLore(this.statusLore));
+                return apple;
+            }
             if (slot == 6) {
                 ItemStack paper = new ItemStack(Items.PAPER);
                 paper.set(DataComponents.CUSTOM_NAME, Component.literal("§bLocation: " + this.coordsText));
@@ -91,12 +101,13 @@ public class InvSeeMenu extends ChestMenu {
         public void stopOpen(net.minecraft.world.entity.ContainerUser user) { delegate.stopOpen(user); }
     }
 
-    public InvSeeMenu(int syncId, Inventory playerInv, Container target, Runnable xpTransferAction, Runnable openEnderChestAction, Runnable tpAction, String coordsText, int targetXpLevel, String dimension) {
-        super(MenuType.GENERIC_9x5, syncId, playerInv, new Wrapper(target, coordsText, targetXpLevel, dimension), 5);
+    public InvSeeMenu(int syncId, Inventory playerInv, Container target, Runnable xpTransferAction, Runnable openEnderChestAction, Runnable tpAction, String coordsText, int targetXpLevel, String dimension, java.util.List<Component> statusLore, java.util.function.Consumer<Integer> statusAction) {
+        super(MenuType.GENERIC_9x5, syncId, playerInv, new Wrapper(target, coordsText, targetXpLevel, dimension, statusLore), 5);
         this.xpTransferAction = xpTransferAction;
         this.openEnderChestAction = openEnderChestAction;
         this.tpAction = tpAction;
         this.coordsText = coordsText;
+        this.statusAction = statusAction;
 
         Container wrapped = this.getContainer();
 
@@ -130,6 +141,7 @@ public class InvSeeMenu extends ChestMenu {
                 return;
             }
             if (slot.getContainerSlot() == 5 && slot.container instanceof Wrapper) {
+                if (this.statusAction != null) this.statusAction.accept(button);
                 return;
             }
         }

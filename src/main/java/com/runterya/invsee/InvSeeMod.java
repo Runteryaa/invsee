@@ -115,8 +115,39 @@ public class InvSeeMod implements ModInitializer {
                         };
 
                         int onlineXpLevel = onlineTarget.experienceLevel;
+                        
+                        java.util.List<Component> onlineStatusLore = new java.util.ArrayList<>();
+                        onlineStatusLore.add(Component.literal(String.format(java.util.Locale.US, "§cHealth: %.1f/%.1f", onlineTarget.getHealth(), onlineTarget.getMaxHealth())));
+                        onlineStatusLore.add(Component.literal("§6Food: " + onlineTarget.getFoodData().getFoodLevel() + "/20"));
+                        java.util.Collection<net.minecraft.world.effect.MobEffectInstance> effects = onlineTarget.getActiveEffects();
+                        if (effects.isEmpty()) {
+                            onlineStatusLore.add(Component.literal("§7Effects: None"));
+                        } else {
+                            onlineStatusLore.add(Component.literal("§dEffects:"));
+                            for (net.minecraft.world.effect.MobEffectInstance eff : effects) {
+                                String effName = eff.getEffect().unwrapKey().map(k -> k.location().getPath()).orElse("unknown");
+                                onlineStatusLore.add(Component.literal("§d- " + effName + " " + (eff.getAmplifier() + 1)));
+                            }
+                        }
+                        onlineStatusLore.add(Component.literal(""));
+                        onlineStatusLore.add(Component.literal("§eLeft-Click: §aHeal & Feed"));
+                        onlineStatusLore.add(Component.literal("§eRight-Click: §aClear Effects"));
+
+                        java.util.function.Consumer<Integer> onlineStatusAction = (button) -> {
+                            if (button == 0) { // Left-Click
+                                onlineTarget.setHealth(onlineTarget.getMaxHealth());
+                                onlineTarget.getFoodData().setFoodLevel(20);
+                                onlineTarget.getFoodData().setSaturation(5.0f);
+                                user.sendSystemMessage(Component.literal("§aHealed and fed " + onlineTarget.getName().getString() + "!"));
+                            } else if (button == 1) { // Right-Click
+                                onlineTarget.removeAllEffects();
+                                user.sendSystemMessage(Component.literal("§aCleared effects of " + onlineTarget.getName().getString() + "!"));
+                            }
+                            user.closeContainer();
+                        };
+
                         user.openMenu(new SimpleMenuProvider((syncId, playerInv, p) -> {
-                            return new InvSeeMenu(syncId, playerInv, targetInv, onlineXpAction, onlineOpenEnderChestAction, onlineTpAction, onlineCoords, onlineXpLevel, onlineDim);
+                            return new InvSeeMenu(syncId, playerInv, targetInv, onlineXpAction, onlineOpenEnderChestAction, onlineTpAction, onlineCoords, onlineXpLevel, onlineDim, onlineStatusLore, onlineStatusAction);
                         }, Component.literal(profile.name() + "'s Inventory")));
                         return 1;
                     }
@@ -342,7 +373,7 @@ public class InvSeeMod implements ModInitializer {
 
                         int offlineXpLevel = nbt.getInt("XpLevel").orElse(0);
                         user.openMenu(new SimpleMenuProvider((syncId, playerInv, p) -> {
-                            return new InvSeeMenu(syncId, playerInv, offlineInv, offlineXpAction, offlineOpenEnderChestAction, offlineTpAction, finalOfflineCoords, offlineXpLevel, offlineDim);
+                            return new InvSeeMenu(syncId, playerInv, offlineInv, offlineXpAction, offlineOpenEnderChestAction, offlineTpAction, finalOfflineCoords, offlineXpLevel, offlineDim, null, null);
                         }, Component.literal(profile.name() + "'s Offline Inv")));
                         
                     } catch (Exception e) {
