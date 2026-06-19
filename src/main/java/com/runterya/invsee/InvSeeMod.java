@@ -47,11 +47,12 @@ public class InvSeeMod implements ModInitializer {
                     return 0;
                 }
 
-                java.util.List<com.mojang.authlib.GameProfile> allPlayers = new java.util.ArrayList<>();
+                java.util.List<com.mojang.authlib.GameProfile> onlinePlayers = new java.util.ArrayList<>();
+                java.util.List<com.mojang.authlib.GameProfile> offlinePlayers = new java.util.ArrayList<>();
                 
                 for (ServerPlayer p : source.getServer().getPlayerList().getPlayers()) {
                     if (p != user) {
-                        allPlayers.add(p.getGameProfile());
+                        onlinePlayers.add(p.getGameProfile());
                     }
                 }
                 
@@ -63,22 +64,22 @@ public class InvSeeMod implements ModInitializer {
                             java.util.UUID uuid = java.util.UUID.fromString(uuidStr);
                             if (uuid.equals(user.getUUID())) continue;
                             
-                            boolean alreadyAdded = allPlayers.stream().anyMatch(p -> p.getId().equals(uuid));
-                            if (!alreadyAdded) {
+                            boolean isOnline = onlinePlayers.stream().anyMatch(p -> p.getId().equals(uuid));
+                            if (!isOnline) {
                                 com.mojang.authlib.GameProfile prof = source.getServer().getProfileCache().get(uuid).orElse(new com.mojang.authlib.GameProfile(uuid, uuidStr));
-                                allPlayers.add(prof);
+                                offlinePlayers.add(prof);
                             }
                         } catch (Exception e) {}
                     }
                 }
 
-                if (allPlayers.isEmpty()) {
+                if (onlinePlayers.isEmpty() && offlinePlayers.isEmpty()) {
                     source.sendFailure(Component.literal("No other players found!"));
                     return 0;
                 }
 
                 user.openMenu(new SimpleMenuProvider((syncId, playerInv, p) -> {
-                    return new PlayerListMenu(syncId, playerInv, allPlayers, 0, (selectedProfile) -> {
+                    return new PlayerListMenu(syncId, playerInv, onlinePlayers, offlinePlayers, 0, (selectedProfile) -> {
                         openInvSee(source, user, new NameAndId(selectedProfile.getName(), selectedProfile.getId()), registryAccess);
                     });
                 }, Component.literal("Player List")));

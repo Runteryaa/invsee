@@ -17,17 +17,19 @@ import net.minecraft.world.item.component.ResolvableProfile;
 import java.util.List;
 
 public class PlayerListMenu extends ChestMenu {
-    private final List<GameProfile> players;
+    private final List<GameProfile> onlinePlayers;
+    private final List<GameProfile> offlinePlayers;
     private int page;
     private final java.util.function.Consumer<GameProfile> onSelect;
 
-    private static final int[] PLAYER_SLOTS = {2, 3, 4, 5, 6, 11, 12, 13, 14, 15};
-    private static final int PREV_SLOT = 18;
-    private static final int NEXT_SLOT = 26;
+    private static final int ITEMS_PER_PAGE = 18;
+    private static final int PREV_SLOT = 18; // Row 3, slot 0
+    private static final int NEXT_SLOT = 26; // Row 3, slot 8
 
-    public PlayerListMenu(int syncId, Inventory playerInv, List<GameProfile> players, int page, java.util.function.Consumer<GameProfile> onSelect) {
+    public PlayerListMenu(int syncId, Inventory playerInv, List<GameProfile> onlinePlayers, List<GameProfile> offlinePlayers, int page, java.util.function.Consumer<GameProfile> onSelect) {
         super(MenuType.GENERIC_9x3, syncId, playerInv, new SimpleContainer(27), 3);
-        this.players = players;
+        this.onlinePlayers = onlinePlayers;
+        this.offlinePlayers = offlinePlayers;
         this.page = page;
         this.onSelect = onSelect;
 
@@ -52,15 +54,42 @@ public class PlayerListMenu extends ChestMenu {
         Container container = this.getContainer();
         container.clearContent();
 
-        int start = page * 10;
-        int end = Math.min(start + 10, players.size());
+        int totalOnlinePages = (int) Math.ceil(onlinePlayers.size() / (double) ITEMS_PER_PAGE);
+        if (totalOnlinePages == 0 && !offlinePlayers.isEmpty()) {
+            totalOnlinePages = 0;
+        } else if (totalOnlinePages == 0) {
+            totalOnlinePages = 1;
+        }
 
-        for (int i = 0; i < (end - start); i++) {
-            GameProfile profile = players.get(start + i);
+        int totalOfflinePages = (int) Math.ceil(offlinePlayers.size() / (double) ITEMS_PER_PAGE);
+        int totalPages = totalOnlinePages + totalOfflinePages;
+        if (totalPages == 0) totalPages = 1;
+
+        boolean isOnlinePage = page < totalOnlinePages;
+        
+        List<GameProfile> currentList;
+        int startIndex;
+        boolean isOnline;
+
+        if (isOnlinePage) {
+            currentList = onlinePlayers;
+            startIndex = page * ITEMS_PER_PAGE;
+            isOnline = true;
+        } else {
+            currentList = offlinePlayers;
+            startIndex = (page - totalOnlinePages) * ITEMS_PER_PAGE;
+            isOnline = false;
+        }
+
+        int end = Math.min(startIndex + ITEMS_PER_PAGE, currentList.size());
+
+        for (int i = 0; i < (end - startIndex); i++) {
+            GameProfile profile = currentList.get(startIndex + i);
             ItemStack head = new ItemStack(Items.PLAYER_HEAD);
             head.set(DataComponents.PROFILE, new ResolvableProfile(profile));
-            head.set(DataComponents.CUSTOM_NAME, Component.literal("§a" + profile.getName()));
-            container.setItem(PLAYER_SLOTS[i], head);
+            head.set(DataComponents.CUSTOM_NAME, Component.literal((isOnline ? "§a" : "§7") + profile.getName()));
+            head.set(DataComponents.LORE, new net.minecraft.world.item.component.ItemLore(java.util.List.of(Component.literal(isOnline ? "§a[Online]" : "§c[Offline]"))));
+            container.setItem(i, head);
         }
 
         if (page > 0) {
@@ -69,11 +98,18 @@ public class PlayerListMenu extends ChestMenu {
             container.setItem(PREV_SLOT, prev);
         }
 
-        if (end < players.size()) {
+        if (page < totalPages - 1) {
             ItemStack next = new ItemStack(Items.ARROW);
             next.set(DataComponents.CUSTOM_NAME, Component.literal("§eNext Page"));
             container.setItem(NEXT_SLOT, next);
         }
+        
+        ItemStack info = new ItemStack(Items.PAPER);
+        info.set(DataComponents.CUSTOM_NAME, Component.literal("§bPage " + (page + 1) + " / " + totalPages));
+        info.set(DataComponents.LORE, new net.minecraft.world.item.component.ItemLore(java.util.List.of(
+            Component.literal(isOnlinePage ? "§aShowing Online Players" : "§cShowing Offline Players")
+        )));
+        container.setItem(22, info);
     }
 
     @Override
@@ -87,22 +123,33 @@ public class PlayerListMenu extends ChestMenu {
                 refreshSlots();
                 return;
             }
-            if (containerSlot == NEXT_SLOT && (page * 10 + 10) < players.size()) {
+            
+            int totalOnlinePages = (int) Math.ceil(onlinePlayers.size() / (double) ITEMS_PER_PAGE);
+            if (totalOnlinePages == 0 && !offlinePlayers.isEmpty()) totalOnlinePages = 0;
+            else if (totalOnlinePages == 0) totalOnlinePages = 1;
+            
+            int totalOfflinePages = (int) Math.ceil(offlinePlayers.size() / (double) ITEMS_PER_PAGE);
+            int totalPages = totalOnlinePages + totalOfflinePages;
+            if (totalPages == 0) totalPages = 1;
+
+            if (containerSlot == NEXT_SLOT && page < totalPages - 1) {
                 page++;
                 refreshSlots();
                 return;
             }
             
-            for (int i = 0; i < PLAYER_SLOTS.length; i++) {
-                if (containerSlot == PLAYER_SLOTS[i]) {
-                    int index = page * 10 + i;
-                    if (index < players.size()) {
-                        GameProfile profile = players.get(index);
-                        player.closeContainer();
-                        onSelect.accept(profile);
-                    }
-                    return;
+            if (containerSlot >= 0 && containerSlot < ITEMS_PER_PAGE) {
+                boolean isOnlinePage = page < totalOnlinePages;
+                List<GameProfile> currentList = isOnlinePage ? onlinePlayers : offlinePlayers;
+                int startIndex = isOnlinePage ? (page * ITEMS_PER_PAGE) : ((page - totalOnlinePages) * ITEMS_PER_PAGE);
+                
+                int index = startIndex + containerSlot;
+                if (index < currentList.size()) {
+                    GameProfile profile = currentList.get(index);
+                    player.closeContainer();
+                    onSelect.accept(profile);
                 }
+                return;
             }
         }
         super.clicked(slotId, button, clickType, player);
