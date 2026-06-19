@@ -16,9 +16,6 @@
 			"com.runterya.invsee.InvSeeMod"
 		]
 	},
-	"mixins": [
-		"invsee.mixins.json"
-	],
 	"depends": {
 		"fabricloader": ">=0.19.3",
 		"minecraft": ">=26.1.2",
