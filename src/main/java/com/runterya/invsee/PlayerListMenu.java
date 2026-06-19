@@ -86,8 +86,8 @@ public class PlayerListMenu extends ChestMenu {
         for (int i = 0; i < (end - startIndex); i++) {
             GameProfile profile = currentList.get(startIndex + i);
             ItemStack head = new ItemStack(Items.PLAYER_HEAD);
-            head.set(DataComponents.PROFILE, new ResolvableProfile(profile));
-            head.set(DataComponents.CUSTOM_NAME, Component.literal((isOnline ? "§a" : "§7") + profile.getName()));
+            head.set(DataComponents.PROFILE, ResolvableProfile.createResolved(profile));
+            head.set(DataComponents.CUSTOM_NAME, Component.literal((isOnline ? "§a" : "§7") + profile.name()));
             container.setItem(i, head);
         }
 
@@ -167,7 +167,6 @@ public class PlayerListMenu extends ChestMenu {
                 int index = startIndex + containerSlot;
                 if (index < currentList.size()) {
                     GameProfile profile = currentList.get(index);
-                    player.closeContainer();
                     onSelect.accept(profile);
                 }
                 return;

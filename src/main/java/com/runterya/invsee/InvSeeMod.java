@@ -64,9 +64,9 @@ public class InvSeeMod implements ModInitializer {
                             java.util.UUID uuid = java.util.UUID.fromString(uuidStr);
                             if (uuid.equals(user.getUUID())) continue;
                             
-                            boolean isOnline = onlinePlayers.stream().anyMatch(p -> p.getId().equals(uuid));
+                            boolean isOnline = onlinePlayers.stream().anyMatch(p -> p.id().equals(uuid));
                             if (!isOnline) {
-                                com.mojang.authlib.GameProfile prof = source.getServer().getProfileCache().get(uuid).orElse(new com.mojang.authlib.GameProfile(uuid, uuidStr));
+                                com.mojang.authlib.GameProfile prof = new com.mojang.authlib.GameProfile(uuid, uuidStr);
                                 offlinePlayers.add(prof);
                             }
                         } catch (Exception e) {}
@@ -80,7 +80,7 @@ public class InvSeeMod implements ModInitializer {
 
                 user.openMenu(new SimpleMenuProvider((syncId, playerInv, p) -> {
                     return new PlayerListMenu(syncId, playerInv, onlinePlayers, offlinePlayers, 0, (selectedProfile) -> {
-                        openInvSee(source, user, new NameAndId(selectedProfile.getName(), selectedProfile.getId()), registryAccess);
+                        openInvSee(source, user, new NameAndId(selectedProfile), registryAccess);
                     });
                 }, Component.literal("Player List")));
 
@@ -181,7 +181,7 @@ public class InvSeeMod implements ModInitializer {
                         } else {
                             onlineStatusLore.add(Component.literal("§dEffects:"));
                             for (net.minecraft.world.effect.MobEffectInstance eff : effects) {
-                                String effName = eff.getEffect().unwrapKey().map(k -> k.location().getPath()).orElse("unknown");
+                                String effName = eff.getEffect().unwrapKey().map(k -> k.identifier().getPath()).orElse("unknown");
                                 onlineStatusLore.add(Component.literal("§d- " + effName + " " + (eff.getAmplifier() + 1)));
                             }
                         }
