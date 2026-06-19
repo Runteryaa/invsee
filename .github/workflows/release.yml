@@ -31,3 +31,14 @@ jobs:
           name: Release ${{ steps.get_version.outputs.version }}
           files: build/libs/*.jar
           generate_release_notes: true
+      - name: Publish to Modrinth
+        uses: Kir-Antipov/mc-publish@v3.3
+        with:
+          modrinth-id: ${{ secrets.MODRINTH_PROJECT_ID }}
+          modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
+          name: Release ${{ steps.get_version.outputs.version }}
+          version: ${{ steps.get_version.outputs.version }}
+          version-type: release
+          loaders: fabric
+          game-versions: 26.1.2, 26.2
+          files: build/libs/!(*-sources).jar
