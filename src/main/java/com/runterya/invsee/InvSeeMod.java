@@ -234,6 +234,7 @@ public class InvSeeMod implements ModInitializer {
                         source.sendFailure(Component.literal(Lang.get("player_not_found")));
                         return 0;
                     }
+                    final long originalLastModified = playerFile.lastModified();
 
                     try {
                         CompoundTag nbt = NbtIo.readCompressed(playerFile.toPath(), NbtAccounter.unlimitedHeap());
@@ -247,21 +248,7 @@ public class InvSeeMod implements ModInitializer {
                                 super.stopOpen(p);
                                 ServerPlayer nowOnline = source.getServer().getPlayerList().getPlayer(profile.id());
                                 if (nowOnline != null) {
-                                    for (int i = 0; i < this.getContainerSize(); i++) {
-                                        if (i < 36) {
-                                            nowOnline.getInventory().setItem(i, this.getItem(i));
-                                        } else if (i == 36) {
-                                            nowOnline.setItemSlot(net.minecraft.world.entity.EquipmentSlot.FEET, this.getItem(i));
-                                        } else if (i == 37) {
-                                            nowOnline.setItemSlot(net.minecraft.world.entity.EquipmentSlot.LEGS, this.getItem(i));
-                                        } else if (i == 38) {
-                                            nowOnline.setItemSlot(net.minecraft.world.entity.EquipmentSlot.CHEST, this.getItem(i));
-                                        } else if (i == 39) {
-                                            nowOnline.setItemSlot(net.minecraft.world.entity.EquipmentSlot.HEAD, this.getItem(i));
-                                        } else if (i == 40) {
-                                            nowOnline.setItemSlot(net.minecraft.world.entity.EquipmentSlot.OFFHAND, this.getItem(i));
-                                        }
-                                    }
+                                    user.sendSystemMessage(Component.literal("§c" + Lang.get("save_aborted_player_online")));
                                 } else {
                                     try {
                                         CompoundTag latestNbt = NbtIo.readCompressed(playerFile.toPath(), NbtAccounter.unlimitedHeap());
@@ -306,6 +293,7 @@ public class InvSeeMod implements ModInitializer {
                                         java.io.File tempFile = java.io.File.createTempFile(profile.id().toString(), ".dat", playerFile.getParentFile());
                                         NbtIo.writeCompressed(latestNbt, tempFile.toPath());
                                         java.nio.file.Files.move(tempFile.toPath(), playerFile.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                                        playerFile.setLastModified(originalLastModified);
                                     } catch (Exception e) {
                                         e.printStackTrace();
                                     }
@@ -375,6 +363,7 @@ public class InvSeeMod implements ModInitializer {
                                     File tempFile = java.io.File.createTempFile(playerFile.getName(), ".dat", playerFile.getParentFile());
                                     NbtIo.writeCompressed(latestNbt, tempFile.toPath());
                                     java.nio.file.Files.move(tempFile.toPath(), playerFile.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                                    playerFile.setLastModified(originalLastModified);
                                     user.sendSystemMessage(Component.literal(Lang.get("stolen_xp", xpTotal)));
                                 }
                             } catch (Exception e) {
@@ -386,6 +375,11 @@ public class InvSeeMod implements ModInitializer {
                             @Override
                             public void stopOpen(net.minecraft.world.entity.ContainerUser player) {
                                 source.getServer().execute(() -> {
+                                    ServerPlayer nowOnline = source.getServer().getPlayerList().getPlayer(profile.id());
+                                    if (nowOnline != null) {
+                                        user.sendSystemMessage(Component.literal("§c" + Lang.get("save_aborted_player_online")));
+                                        return;
+                                    }
                                     try {
                                         CompoundTag latestNbt = NbtIo.readCompressed(playerFile.toPath(), NbtAccounter.unlimitedHeap());
                                         ListTag newEnderTag = new ListTag();
@@ -404,6 +398,7 @@ public class InvSeeMod implements ModInitializer {
                                         java.io.File tempFile = java.io.File.createTempFile(profile.id().toString() + "_ec", ".dat", playerFile.getParentFile());
                                         NbtIo.writeCompressed(latestNbt, tempFile.toPath());
                                         java.nio.file.Files.move(tempFile.toPath(), playerFile.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                                        playerFile.setLastModified(originalLastModified);
                                     } catch (Exception e) {
                                         e.printStackTrace();
                                     }
