@@ -161,35 +161,48 @@ public class InvSeeMod implements ModInitializer {
                             }, Component.literal(profile.name() + "'s Ender Chest")));
                         };
 
-                        String keyStr = onlineTarget.level().dimension().toString();
-                        String onlineDim = keyStr.substring(keyStr.lastIndexOf('/') + 1, keyStr.length() - 1).trim();
-                        String onlineCoords = String.format(java.util.Locale.US, "%.1f %.1f %.1f", onlineTarget.getX(), onlineTarget.getY(), onlineTarget.getZ());
-                        String onlineCmd = "/execute in " + onlineDim + " run tp @s " + onlineCoords;
+                        java.util.function.Supplier<String> onlineDimSupplier = () -> {
+                            String keyStr = onlineTarget.level().dimension().toString();
+                            return keyStr.substring(keyStr.lastIndexOf('/') + 1, keyStr.length() - 1).trim();
+                        };
+                        java.util.function.Supplier<String> onlineCoordsSupplier = () -> String.format(java.util.Locale.US, "%.1f %.1f %.1f", onlineTarget.getX(), onlineTarget.getY(), onlineTarget.getZ());
+                        
                         Runnable onlineTpAction = () -> {
                             user.closeContainer();
+                            String onlineCmd = "/execute in " + onlineDimSupplier.get() + " run tp @s " + onlineCoordsSupplier.get();
                             user.sendSystemMessage(Component.literal("§aClick here to teleport!").withStyle(style -> style.withClickEvent(new net.minecraft.network.chat.ClickEvent.SuggestCommand(onlineCmd))));
                         };
 
-                        int onlineXpLevel = onlineTarget.experienceLevel;
+                        java.util.function.Supplier<Integer> onlineXpLevelSupplier = () -> onlineTarget.experienceLevel;
                         
-                        java.util.List<Component> onlineStatusLore = new java.util.ArrayList<>();
-                        onlineStatusLore.add(Component.literal(String.format(java.util.Locale.US, "§cHealth: %.1f/%.1f", onlineTarget.getHealth(), onlineTarget.getMaxHealth())));
-                        onlineStatusLore.add(Component.literal("§6Food: " + onlineTarget.getFoodData().getFoodLevel() + "/20"));
-                        java.util.Collection<net.minecraft.world.effect.MobEffectInstance> effects = onlineTarget.getActiveEffects();
-                        if (effects.isEmpty()) {
-                            onlineStatusLore.add(Component.literal("§7Effects: None"));
-                        } else {
-                            onlineStatusLore.add(Component.literal("§dEffects:"));
-                            for (net.minecraft.world.effect.MobEffectInstance eff : effects) {
-                                String effName = eff.getEffect().unwrapKey().map(k -> k.identifier().getPath()).orElse("unknown");
-                                onlineStatusLore.add(Component.literal("§d- " + effName + " " + (eff.getAmplifier() + 1)));
+                        java.util.function.Supplier<java.util.List<Component>> onlineStatusLoreSupplier = () -> {
+                            java.util.List<Component> lore = new java.util.ArrayList<>();
+                            lore.add(Component.literal(String.format(java.util.Locale.US, "§cHealth: %.1f/%.1f", onlineTarget.getHealth(), onlineTarget.getMaxHealth())));
+                            lore.add(Component.literal("§6Food: " + onlineTarget.getFoodData().getFoodLevel() + "/20"));
+                            java.util.Collection<net.minecraft.world.effect.MobEffectInstance> effects = onlineTarget.getActiveEffects();
+                            if (effects.isEmpty()) {
+                                lore.add(Component.literal("§7Effects: None"));
+                            } else {
+                                lore.add(Component.literal("§dEffects:"));
+                                for (net.minecraft.world.effect.MobEffectInstance eff : effects) {
+                                    String effName = eff.getEffect().unwrapKey().map(k -> k.identifier().getPath()).orElse("unknown");
+                                    String durationStr = "";
+                                    if (eff.isInfiniteDuration()) {
+                                        durationStr = " (XX:XX)";
+                                    } else {
+                                        int secs = eff.getDuration() / 20;
+                                        durationStr = String.format(" (%02d:%02d)", secs / 60, secs % 60);
+                                    }
+                                    lore.add(Component.literal("§d- " + effName + " " + (eff.getAmplifier() + 1) + durationStr));
+                                }
                             }
-                        }
+                            return lore;
+                        };
 
                         java.util.function.Consumer<Integer> onlineStatusAction = (button) -> {};
 
                         user.openMenu(new SimpleMenuProvider((syncId, playerInv, p) -> {
-                            return new InvSeeMenu(syncId, playerInv, targetInv, onlineXpAction, onlineOpenEnderChestAction, onlineTpAction, onlineCoords, onlineXpLevel, onlineDim, onlineStatusLore, onlineStatusAction);
+                            return new InvSeeMenu(syncId, playerInv, targetInv, onlineXpAction, onlineOpenEnderChestAction, onlineTpAction, onlineCoordsSupplier, onlineXpLevelSupplier, onlineDimSupplier, onlineStatusLoreSupplier, onlineStatusAction);
                         }, Component.literal(profile.name() + "'s Inventory")));
                         return 1;
                     }
@@ -415,7 +428,7 @@ public class InvSeeMod implements ModInitializer {
 
                         int offlineXpLevel = nbt.getInt("XpLevel").orElse(0);
                         user.openMenu(new SimpleMenuProvider((syncId, playerInv, p) -> {
-                            return new InvSeeMenu(syncId, playerInv, offlineInv, offlineXpAction, offlineOpenEnderChestAction, offlineTpAction, finalOfflineCoords, offlineXpLevel, offlineDim, null, null);
+                            return new InvSeeMenu(syncId, playerInv, offlineInv, offlineXpAction, offlineOpenEnderChestAction, offlineTpAction, () -> finalOfflineCoords, () -> offlineXpLevel, () -> offlineDim, () -> null, null);
                         }, Component.literal(profile.name() + "'s Offline Inv")));
                         
                     } catch (Exception e) {
