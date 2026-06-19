@@ -123,7 +123,7 @@ public class PlayerListMenu extends ChestMenu {
 
     @Override
     public void clicked(int slotId, int button, ContainerInput clickType, Player player) {
-        if (slotId >= 0 && slotId < this.slots.size()) {
+        if (slotId >= 0 && slotId < 27) {
             Slot slot = this.slots.get(slotId);
             int containerSlot = slot.getContainerSlot();
             
