@@ -60,6 +60,7 @@ public class InvSeeMenu extends ChestMenu {
                 java.util.List<Component> currentLore = this.statusLoreSupplier.get();
                 if (currentLore != null) {
                     ItemStack apple = new ItemStack(Items.GOLDEN_APPLE);
+                    apple.set(DataComponents.CUSTOM_NAME, Component.literal(" "));
                     apple.set(DataComponents.LORE, new net.minecraft.world.item.component.ItemLore(currentLore));
                     return apple;
                 }
