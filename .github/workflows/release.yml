@@ -1,5 +1,8 @@
 name: Release
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
     inputs:
       changelog:
@@ -34,7 +37,7 @@ jobs:
         with:
           tag_name: ${{ steps.get_version.outputs.version }}
           name: Release ${{ steps.get_version.outputs.version }}
-          body: ${{ github.event.inputs.changelog }}
+          body: ${{ github.event.inputs.changelog || github.event.head_commit.message }}
           files: build/libs/*.jar
           generate_release_notes: true
       - name: Publish to Modrinth
@@ -45,7 +48,7 @@ jobs:
           name: Release ${{ steps.get_version.outputs.version }}
           version: ${{ steps.get_version.outputs.version }}
           version-type: release
-          changelog: ${{ github.event.inputs.changelog }}
+          changelog: ${{ github.event.inputs.changelog || github.event.head_commit.message }}
           loaders: fabric
           game-versions: |
             26.1.2
