@@ -440,7 +440,7 @@ public class InvSeeMod implements ModInitializer {
                         
                         Runnable offlineTpAction = () -> {
                             user.closeContainer();
-                            user.sendSystemMessage(Component.literal("§aClick here to teleport!").withStyle(style -> style.withClickEvent(new net.minecraft.network.chat.ClickEvent.SuggestCommand(offlineCmd))));
+                            user.sendSystemMessage(Component.literal("§a" + Lang.get("click_teleport")).withStyle(style -> style.withClickEvent(new net.minecraft.network.chat.ClickEvent.SuggestCommand(offlineCmd))));
                         };
 
                         int offlineXpLevel = nbt.getInt("XpLevel").orElse(0);
@@ -494,7 +494,7 @@ public class InvSeeMod implements ModInitializer {
                         
                     } catch (Exception e) {
                         e.printStackTrace();
-                        source.sendFailure(Component.literal("Failed to load player data!"));
+                        source.sendFailure(Component.literal(Lang.get("failed_load_data")));
                     }
 
                 return 1;

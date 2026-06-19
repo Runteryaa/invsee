@@ -67,18 +67,18 @@ public class InvSeeMenu extends ChestMenu {
             }
             if (slot == 6) {
                 ItemStack paper = new ItemStack(Items.PAPER);
-                paper.set(DataComponents.CUSTOM_NAME, Component.literal("§bLocation: " + this.coordsTextSupplier.get()));
-                paper.set(DataComponents.LORE, new net.minecraft.world.item.component.ItemLore(java.util.List.of(Component.literal("§7Dimension: " + this.dimensionSupplier.get()))));
+                paper.set(DataComponents.CUSTOM_NAME, Component.literal("§b" + Lang.get("location", this.coordsTextSupplier.get())));
+                paper.set(DataComponents.LORE, new net.minecraft.world.item.component.ItemLore(java.util.List.of(Component.literal("§7" + Lang.get("dimension", this.dimensionSupplier.get())))));
                 return paper;
             }
             if (slot == 8) {
                 ItemStack xpBottle = new ItemStack(Items.EXPERIENCE_BOTTLE);
-                xpBottle.set(DataComponents.CUSTOM_NAME, Component.literal("§eXP: " + this.targetXpLevelSupplier.get() + " lvl"));
+                xpBottle.set(DataComponents.CUSTOM_NAME, Component.literal("§e" + Lang.get("xp_level", this.targetXpLevelSupplier.get())));
                 return xpBottle;
             }
             if (slot == 7) {
                 ItemStack enderChest = new ItemStack(Items.ENDER_CHEST);
-                enderChest.set(DataComponents.CUSTOM_NAME, Component.literal("§6Open Ender Chest"));
+                enderChest.set(DataComponents.CUSTOM_NAME, Component.literal("§6" + Lang.get("open_ender_chest")));
                 return enderChest;
             }
             int m = map(slot);

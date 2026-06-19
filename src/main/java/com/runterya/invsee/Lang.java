@@ -28,6 +28,18 @@ public class Lang {
         en.put("stolen_xp", "§aStolen %d XP!");
         en.put("player_inventory", "%s's Inventory");
         en.put("player_not_found", "Player not found or has no data!");
+        en.put("location", "Location: %s");
+        en.put("dimension", "Dimension: %s");
+        en.put("xp_level", "XP: %d lvl");
+        en.put("open_ender_chest", "Open Ender Chest");
+        en.put("failed_load_data", "Failed to load player data!");
+        en.put("prev_page", "Previous Page");
+        en.put("next_page", "Next Page");
+        en.put("online_players", "Online Players");
+        en.put("offline_players", "Offline Players");
+        en.put("page_info", "Page %d / %d");
+        en.put("click_view_offline", "Click to view Offline Players");
+        en.put("click_view_online", "Click to view Online Players");
         translations.put("en", en);
 
         Map<String, String> tr = new HashMap<>();
@@ -50,6 +62,18 @@ public class Lang {
         tr.put("stolen_xp", "§a%d XP çalındı!");
         tr.put("player_inventory", "%s'in Envanteri");
         tr.put("player_not_found", "Oyuncu bulunamadı veya verisi yok!");
+        tr.put("location", "Konum: %s");
+        tr.put("dimension", "Boyut: %s");
+        tr.put("xp_level", "XP: %d lvl");
+        tr.put("open_ender_chest", "Ender Sandığını Aç");
+        tr.put("failed_load_data", "Oyuncu verisi yüklenemedi!");
+        tr.put("prev_page", "Önceki Sayfa");
+        tr.put("next_page", "Sonraki Sayfa");
+        tr.put("online_players", "Çevrimiçi Oyuncular");
+        tr.put("offline_players", "Çevrimdışı Oyuncular");
+        tr.put("page_info", "Sayfa %d / %d");
+        tr.put("click_view_offline", "Çevrimdışı Oyuncuları Görmek İçin Tıklayın");
+        tr.put("click_view_online", "Çevrimiçi Oyuncuları Görmek İçin Tıklayın");
         translations.put("tr", tr);
     }
 
