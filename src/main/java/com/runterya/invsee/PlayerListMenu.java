@@ -105,9 +105,19 @@ public class PlayerListMenu extends ChestMenu {
         
         ItemStack info = new ItemStack(isOnlinePage ? Items.LIME_CONCRETE : Items.RED_CONCRETE);
         info.set(DataComponents.CUSTOM_NAME, Component.literal(isOnlinePage ? "§aOnline Players" : "§cOffline Players"));
-        info.set(DataComponents.LORE, new net.minecraft.world.item.component.ItemLore(java.util.List.of(
-            Component.literal("§bPage " + (page + 1) + " / " + totalPages)
-        )));
+        
+        java.util.List<Component> loreList = new java.util.ArrayList<>();
+        loreList.add(Component.literal("§bPage " + (page + 1) + " / " + totalPages));
+        
+        if (isOnlinePage && !offlinePlayers.isEmpty()) {
+            loreList.add(Component.literal(""));
+            loreList.add(Component.literal("§eClick to view Offline Players"));
+        } else if (!isOnlinePage && !onlinePlayers.isEmpty()) {
+            loreList.add(Component.literal(""));
+            loreList.add(Component.literal("§eClick to view Online Players"));
+        }
+        
+        info.set(DataComponents.LORE, new net.minecraft.world.item.component.ItemLore(loreList));
         container.setItem(22, info);
     }
 
@@ -134,6 +144,18 @@ public class PlayerListMenu extends ChestMenu {
             if (containerSlot == NEXT_SLOT && page < totalPages - 1) {
                 page++;
                 refreshSlots();
+                return;
+            }
+            
+            if (containerSlot == 22) {
+                boolean isOnlinePage = page < totalOnlinePages;
+                if (isOnlinePage && !offlinePlayers.isEmpty()) {
+                    page = totalOnlinePages;
+                    refreshSlots();
+                } else if (!isOnlinePage && !onlinePlayers.isEmpty()) {
+                    page = 0;
+                    refreshSlots();
+                }
                 return;
             }
             
