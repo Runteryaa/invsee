@@ -93,28 +93,28 @@ public class PlayerListMenu extends ChestMenu {
 
         if (page > 0) {
             ItemStack prev = new ItemStack(Items.ARROW);
-            prev.set(DataComponents.CUSTOM_NAME, Component.literal("§ePrevious Page"));
+            prev.set(DataComponents.CUSTOM_NAME, Component.literal("§e" + Lang.get("prev_page")));
             container.setItem(PREV_SLOT, prev);
         }
 
         if (page < totalPages - 1) {
             ItemStack next = new ItemStack(Items.ARROW);
-            next.set(DataComponents.CUSTOM_NAME, Component.literal("§eNext Page"));
+            next.set(DataComponents.CUSTOM_NAME, Component.literal("§e" + Lang.get("next_page")));
             container.setItem(NEXT_SLOT, next);
         }
         
         ItemStack info = new ItemStack(isOnlinePage ? Items.LIME_CONCRETE : Items.RED_CONCRETE);
-        info.set(DataComponents.CUSTOM_NAME, Component.literal(isOnlinePage ? "§aOnline Players" : "§cOffline Players"));
+        info.set(DataComponents.CUSTOM_NAME, Component.literal(isOnlinePage ? "§a" + Lang.get("online_players") : "§c" + Lang.get("offline_players")));
         
         java.util.List<Component> loreList = new java.util.ArrayList<>();
-        loreList.add(Component.literal("§bPage " + (page + 1) + " / " + totalPages));
+        loreList.add(Component.literal("§b" + Lang.get("page_info", page + 1, totalPages)));
         
         if (isOnlinePage && !offlinePlayers.isEmpty()) {
             loreList.add(Component.literal(""));
-            loreList.add(Component.literal("§eClick to view Offline Players"));
+            loreList.add(Component.literal("§e" + Lang.get("click_view_offline")));
         } else if (!isOnlinePage && !onlinePlayers.isEmpty()) {
             loreList.add(Component.literal(""));
-            loreList.add(Component.literal("§eClick to view Online Players"));
+            loreList.add(Component.literal("§e" + Lang.get("click_view_online")));
         }
         
         info.set(DataComponents.LORE, new net.minecraft.world.item.component.ItemLore(loreList));

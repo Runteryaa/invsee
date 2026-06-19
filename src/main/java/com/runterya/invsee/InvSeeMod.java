@@ -28,6 +28,8 @@ import java.io.File;
 public class InvSeeMod implements ModInitializer {
     @Override
     public void onInitialize() {
+        Config config = Config.load();
+        Lang.setLanguage(config.language);
 
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
             registerCommands(dispatcher, registryAccess);
@@ -43,7 +45,7 @@ public class InvSeeMod implements ModInitializer {
                 
                 File playerDataDir = source.getServer().getWorldPath(net.minecraft.world.level.storage.LevelResource.PLAYER_DATA_DIR).toFile();
                 if (!playerDataDir.exists()) {
-                    source.sendFailure(Component.literal("No player data found!"));
+                    source.sendFailure(Component.literal(Lang.get("no_player_data")));
                     return 0;
                 }
 
@@ -74,7 +76,7 @@ public class InvSeeMod implements ModInitializer {
                 }
 
                 if (onlinePlayers.isEmpty() && offlinePlayers.isEmpty()) {
-                    source.sendFailure(Component.literal("No other players found!"));
+                    source.sendFailure(Component.literal(Lang.get("no_other_players")));
                     return 0;
                 }
 
@@ -82,7 +84,7 @@ public class InvSeeMod implements ModInitializer {
                     return new PlayerListMenu(syncId, playerInv, onlinePlayers, offlinePlayers, 0, (selectedProfile) -> {
                         openInvSee(source, user, new NameAndId(selectedProfile), registryAccess);
                     });
-                }, Component.literal("Player List")));
+                }, Component.literal(Lang.get("player_list"))));
 
                 return 1;
             })
@@ -103,7 +105,7 @@ public class InvSeeMod implements ModInitializer {
 
                     if (onlineTarget != null) {
                         if (user == onlineTarget) {
-                            source.sendFailure(Component.literal("You cannot invsee yourself!"));
+                            source.sendFailure(Component.literal(Lang.get("cannot_self")));
                             return 0;
                         }
                         Runnable onlineXpAction = () -> {
@@ -114,20 +116,25 @@ public class InvSeeMod implements ModInitializer {
                                 onlineTarget.experienceProgress = 0.0f;
                                 onlineTarget.totalExperience = 0;
                                 onlineTarget.connection.send(new net.minecraft.network.protocol.game.ClientboundSetExperiencePacket(0.0f, 0, 0));
-                                user.sendSystemMessage(Component.literal("§aStolen " + total + " XP!"));
+                                user.sendSystemMessage(Component.literal(Lang.get("stolen_xp", total)));
                             }
                         };
 
                         Container targetInv = new Container() {
+                            private ServerPlayer getTarget() {
+                                ServerPlayer p = source.getServer().getPlayerList().getPlayer(profile.id());
+                                return p != null ? p : onlineTarget;
+                            }
                             public int getContainerSize() { return 41; }
-                            public boolean isEmpty() { return onlineTarget.getInventory().isEmpty(); }
+                            public boolean isEmpty() { return getTarget().getInventory().isEmpty(); }
                             public ItemStack getItem(int slot) {
-                                if (slot < 36) return onlineTarget.getInventory().getItem(slot);
-                                if (slot == 36) return onlineTarget.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.FEET);
-                                if (slot == 37) return onlineTarget.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.LEGS);
-                                if (slot == 38) return onlineTarget.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.CHEST);
-                                if (slot == 39) return onlineTarget.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.HEAD);
-                                if (slot == 40) return onlineTarget.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.OFFHAND);
+                                ServerPlayer t = getTarget();
+                                if (slot < 36) return t.getInventory().getItem(slot);
+                                if (slot == 36) return t.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.FEET);
+                                if (slot == 37) return t.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.LEGS);
+                                if (slot == 38) return t.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.CHEST);
+                                if (slot == 39) return t.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.HEAD);
+                                if (slot == 40) return t.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.OFFHAND);
                                 return ItemStack.EMPTY;
                             }
                             public ItemStack removeItem(int slot, int amount) {
@@ -143,47 +150,61 @@ public class InvSeeMod implements ModInitializer {
                                 return stack;
                             }
                             public void setItem(int slot, ItemStack stack) {
-                                if (slot < 36) onlineTarget.getInventory().setItem(slot, stack);
-                                else if (slot == 36) onlineTarget.setItemSlot(net.minecraft.world.entity.EquipmentSlot.FEET, stack);
-                                else if (slot == 37) onlineTarget.setItemSlot(net.minecraft.world.entity.EquipmentSlot.LEGS, stack);
-                                else if (slot == 38) onlineTarget.setItemSlot(net.minecraft.world.entity.EquipmentSlot.CHEST, stack);
-                                else if (slot == 39) onlineTarget.setItemSlot(net.minecraft.world.entity.EquipmentSlot.HEAD, stack);
-                                else if (slot == 40) onlineTarget.setItemSlot(net.minecraft.world.entity.EquipmentSlot.OFFHAND, stack);
+                                ServerPlayer t = getTarget();
+                                if (slot < 36) t.getInventory().setItem(slot, stack);
+                                else if (slot == 36) t.setItemSlot(net.minecraft.world.entity.EquipmentSlot.FEET, stack);
+                                else if (slot == 37) t.setItemSlot(net.minecraft.world.entity.EquipmentSlot.LEGS, stack);
+                                else if (slot == 38) t.setItemSlot(net.minecraft.world.entity.EquipmentSlot.CHEST, stack);
+                                else if (slot == 39) t.setItemSlot(net.minecraft.world.entity.EquipmentSlot.HEAD, stack);
+                                else if (slot == 40) t.setItemSlot(net.minecraft.world.entity.EquipmentSlot.OFFHAND, stack);
                             }
-                            public void setChanged() { onlineTarget.getInventory().setChanged(); }
+                            public void setChanged() { getTarget().getInventory().setChanged(); }
                             public boolean stillValid(net.minecraft.world.entity.player.Player p) { return true; }
-                            public void clearContent() { onlineTarget.getInventory().clearContent(); }
+                            public void clearContent() { getTarget().getInventory().clearContent(); }
                         };
 
                         Runnable onlineOpenEnderChestAction = () -> {
-                            user.openMenu(new SimpleMenuProvider((syncId, playerInv, p) -> {
-                                return net.minecraft.world.inventory.ChestMenu.threeRows(syncId, playerInv, onlineTarget.getEnderChestInventory());
-                            }, Component.literal(profile.name() + "'s Ender Chest")));
+                            ServerPlayer p = source.getServer().getPlayerList().getPlayer(profile.id());
+                            ServerPlayer t = p != null ? p : onlineTarget;
+                            user.openMenu(new SimpleMenuProvider((syncId, playerInv, pl) -> {
+                                return net.minecraft.world.inventory.ChestMenu.threeRows(syncId, playerInv, t.getEnderChestInventory());
+                            }, Component.literal(Lang.get("ender_chest", profile.name()))));
                         };
 
                         java.util.function.Supplier<String> onlineDimSupplier = () -> {
-                            String keyStr = onlineTarget.level().dimension().toString();
+                            ServerPlayer p = source.getServer().getPlayerList().getPlayer(profile.id());
+                            ServerPlayer t = p != null ? p : onlineTarget;
+                            String keyStr = t.level().dimension().toString();
                             return keyStr.substring(keyStr.lastIndexOf('/') + 1, keyStr.length() - 1).trim();
                         };
-                        java.util.function.Supplier<String> onlineCoordsSupplier = () -> String.format(java.util.Locale.US, "%.1f %.1f %.1f", onlineTarget.getX(), onlineTarget.getY(), onlineTarget.getZ());
+                        java.util.function.Supplier<String> onlineCoordsSupplier = () -> {
+                            ServerPlayer p = source.getServer().getPlayerList().getPlayer(profile.id());
+                            ServerPlayer t = p != null ? p : onlineTarget;
+                            return String.format(java.util.Locale.US, "%.1f %.1f %.1f", t.getX(), t.getY(), t.getZ());
+                        };
                         
                         Runnable onlineTpAction = () -> {
                             user.closeContainer();
                             String onlineCmd = "/execute in " + onlineDimSupplier.get() + " run tp @s " + onlineCoordsSupplier.get();
-                            user.sendSystemMessage(Component.literal("§aClick here to teleport!").withStyle(style -> style.withClickEvent(new net.minecraft.network.chat.ClickEvent.SuggestCommand(onlineCmd))));
+                            user.sendSystemMessage(Component.literal("§a" + Lang.get("click_teleport")).withStyle(style -> style.withClickEvent(new net.minecraft.network.chat.ClickEvent.SuggestCommand(onlineCmd))));
                         };
 
-                        java.util.function.Supplier<Integer> onlineXpLevelSupplier = () -> onlineTarget.experienceLevel;
+                        java.util.function.Supplier<Integer> onlineXpLevelSupplier = () -> {
+                            ServerPlayer p = source.getServer().getPlayerList().getPlayer(profile.id());
+                            return p != null ? p.experienceLevel : onlineTarget.experienceLevel;
+                        };
                         
                         java.util.function.Supplier<java.util.List<Component>> onlineStatusLoreSupplier = () -> {
+                            ServerPlayer p = source.getServer().getPlayerList().getPlayer(profile.id());
+                            ServerPlayer t = p != null ? p : onlineTarget;
                             java.util.List<Component> lore = new java.util.ArrayList<>();
-                            lore.add(Component.literal(String.format(java.util.Locale.US, "§cHealth: %.1f/%.1f", onlineTarget.getHealth(), onlineTarget.getMaxHealth())));
-                            lore.add(Component.literal("§6Food: " + onlineTarget.getFoodData().getFoodLevel() + "/20"));
-                            java.util.Collection<net.minecraft.world.effect.MobEffectInstance> effects = onlineTarget.getActiveEffects();
+                            lore.add(Component.literal(String.format(java.util.Locale.US, "§c%s: %.1f/%.1f", Lang.get("health"), t.getHealth(), t.getMaxHealth())));
+                            lore.add(Component.literal("§6" + Lang.get("food") + ": " + t.getFoodData().getFoodLevel() + "/20"));
+                            java.util.Collection<net.minecraft.world.effect.MobEffectInstance> effects = t.getActiveEffects();
                             if (effects.isEmpty()) {
-                                lore.add(Component.literal("§7Effects: None"));
+                                lore.add(Component.literal("§7" + Lang.get("effects") + ": " + Lang.get("effects_none")));
                             } else {
-                                lore.add(Component.literal("§dEffects:"));
+                                lore.add(Component.literal("§d" + Lang.get("effects") + ":"));
                                 for (net.minecraft.world.effect.MobEffectInstance eff : effects) {
                                     String effName = eff.getEffect().unwrapKey().map(k -> k.identifier().getPath()).orElse("unknown");
                                     String durationStr = "";
@@ -203,14 +224,14 @@ public class InvSeeMod implements ModInitializer {
 
                         user.openMenu(new SimpleMenuProvider((syncId, playerInv, p) -> {
                             return new InvSeeMenu(syncId, playerInv, targetInv, onlineXpAction, onlineOpenEnderChestAction, onlineTpAction, onlineCoordsSupplier, onlineXpLevelSupplier, onlineDimSupplier, onlineStatusLoreSupplier, onlineStatusAction);
-                        }, Component.literal(profile.name() + "'s Inventory")));
+                        }, Component.literal(Lang.get("player_inventory", profile.name()))));
                         return 1;
                     }
 
                     File playerDataDir = source.getServer().getWorldPath(net.minecraft.world.level.storage.LevelResource.PLAYER_DATA_DIR).toFile();
                     File playerFile = new File(playerDataDir, profile.id() + ".dat");
                     if (!playerFile.exists()) {
-                        source.sendFailure(Component.literal("Player not found or has no data!"));
+                        source.sendFailure(Component.literal(Lang.get("player_not_found")));
                         return 0;
                     }
 
@@ -261,11 +282,9 @@ public class InvSeeMod implements ModInitializer {
                                         }
                                         latestNbt.put("Inventory", newInvTag);
 
-                                        // Save back into 'equipment' CompoundTag for 1.21.2+
                                         if (latestNbt.contains("equipment")) {
                                             CompoundTag equipmentTag = latestNbt.getCompoundOrEmpty("equipment");
                                             
-                                            // Save armor slots
                                             ItemStack head = this.getItem(39);
                                             equipmentTag.put("head", head.isEmpty() ? new CompoundTag() : ItemStack.CODEC.encodeStart(ops, head).getOrThrow());
                                             
@@ -278,7 +297,6 @@ public class InvSeeMod implements ModInitializer {
                                             ItemStack feet = this.getItem(36);
                                             equipmentTag.put("feet", feet.isEmpty() ? new CompoundTag() : ItemStack.CODEC.encodeStart(ops, feet).getOrThrow());
                                             
-                                            // Save offhand slot
                                             ItemStack offhand = this.getItem(40);
                                             equipmentTag.put("offhand", offhand.isEmpty() ? new CompoundTag() : ItemStack.CODEC.encodeStart(ops, offhand).getOrThrow());
                                             
@@ -308,7 +326,6 @@ public class InvSeeMod implements ModInitializer {
                             }
                         }
 
-                        // Fallback for 1.21.2+ EntityEquipment format
                         if (nbt.contains("equipment")) {
                             CompoundTag equipmentTag = nbt.getCompoundOrEmpty("equipment");
                             
@@ -339,7 +356,7 @@ public class InvSeeMod implements ModInitializer {
                                     nowOnline.experienceProgress = 0.0f;
                                     nowOnline.totalExperience = 0;
                                     nowOnline.connection.send(new net.minecraft.network.protocol.game.ClientboundSetExperiencePacket(0.0f, 0, 0));
-                                    user.sendSystemMessage(Component.literal("§aStolen " + total + " XP!"));
+                                    user.sendSystemMessage(Component.literal(Lang.get("stolen_xp", total)));
                                 }
                                 return;
                             }
@@ -358,7 +375,7 @@ public class InvSeeMod implements ModInitializer {
                                     File tempFile = java.io.File.createTempFile(playerFile.getName(), ".dat", playerFile.getParentFile());
                                     NbtIo.writeCompressed(latestNbt, tempFile.toPath());
                                     java.nio.file.Files.move(tempFile.toPath(), playerFile.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-                                    user.sendSystemMessage(Component.literal("§aStolen " + xpTotal + " XP from offline player."));
+                                    user.sendSystemMessage(Component.literal(Lang.get("stolen_xp", xpTotal)));
                                 }
                             } catch (Exception e) {
                                 e.printStackTrace();
@@ -409,7 +426,7 @@ public class InvSeeMod implements ModInitializer {
                         Runnable offlineOpenEnderChestAction = () -> {
                             user.openMenu(new SimpleMenuProvider((syncId, playerInv, p) -> {
                                 return net.minecraft.world.inventory.ChestMenu.threeRows(syncId, playerInv, offlineEnderChest);
-                            }, Component.literal(profile.name() + "'s Ender Chest")));
+                            }, Component.literal(Lang.get("ender_chest", profile.name()))));
                         };
 
                         ListTag posTag = nbt.getListOrEmpty("Pos");
@@ -423,17 +440,61 @@ public class InvSeeMod implements ModInitializer {
                         
                         Runnable offlineTpAction = () -> {
                             user.closeContainer();
-                            user.sendSystemMessage(Component.literal("§aClick here to teleport!").withStyle(style -> style.withClickEvent(new net.minecraft.network.chat.ClickEvent.SuggestCommand(offlineCmd))));
+                            user.sendSystemMessage(Component.literal("§a" + Lang.get("click_teleport")).withStyle(style -> style.withClickEvent(new net.minecraft.network.chat.ClickEvent.SuggestCommand(offlineCmd))));
                         };
 
                         int offlineXpLevel = nbt.getInt("XpLevel").orElse(0);
+                        
+                        java.util.function.Supplier<java.util.List<Component>> offlineStatusLoreSupplier = () -> {
+                            java.util.List<Component> lore = new java.util.ArrayList<>();
+                            float health = nbt.getFloat("Health").orElse(20.0f);
+                            lore.add(Component.literal(String.format(java.util.Locale.US, "§c%s: %.1f", Lang.get("health"), health)));
+                            int food = nbt.getInt("foodLevel").orElse(20);
+                            lore.add(Component.literal("§6" + Lang.get("food") + ": " + food + "/20"));
+                            
+                            ListTag effectsTag = nbt.getListOrEmpty("ActiveEffects");
+                            if (effectsTag.isEmpty()) {
+                                lore.add(Component.literal("§7" + Lang.get("effects") + ": " + Lang.get("effects_none")));
+                            } else {
+                                lore.add(Component.literal("§d" + Lang.get("effects") + ":"));
+                                for (int i = 0; i < effectsTag.size(); i++) {
+                                    CompoundTag eff = effectsTag.getCompoundOrEmpty(i);
+                                    String effId = eff.getString("id").orElse("unknown").replace("minecraft:", "");
+                                    int amp = eff.getByte("amplifier").orElse((byte) 0) + 1;
+                                    int dur = eff.getInt("duration").orElse(0);
+                                    int secs = dur / 20;
+                                    String durStr = String.format(" (%02d:%02d)", secs / 60, secs % 60);
+                                    lore.add(Component.literal("§d- " + effId + " " + amp + durStr));
+                                }
+                            }
+                            
+                            long lastPlayed = playerFile.lastModified();
+                            if (lastPlayed > 0) {
+                                long diff = System.currentTimeMillis() - lastPlayed;
+                                long minutes = java.util.concurrent.TimeUnit.MILLISECONDS.toMinutes(diff);
+                                long hours = java.util.concurrent.TimeUnit.MILLISECONDS.toHours(diff);
+                                long days = java.util.concurrent.TimeUnit.MILLISECONDS.toDays(diff);
+                                
+                                String timeStr;
+                                if (days > 0) timeStr = Lang.get("days_ago", days);
+                                else if (hours > 0) timeStr = Lang.get("hours_ago", hours);
+                                else if (minutes > 0) timeStr = Lang.get("minutes_ago", minutes);
+                                else timeStr = Lang.get("just_now");
+                                
+                                lore.add(Component.literal(""));
+                                lore.add(Component.literal("§8" + Lang.get("last_seen") + ": " + timeStr));
+                            }
+                            
+                            return lore;
+                        };
+
                         user.openMenu(new SimpleMenuProvider((syncId, playerInv, p) -> {
-                            return new InvSeeMenu(syncId, playerInv, offlineInv, offlineXpAction, offlineOpenEnderChestAction, offlineTpAction, () -> finalOfflineCoords, () -> offlineXpLevel, () -> offlineDim, () -> null, null);
-                        }, Component.literal(profile.name() + "'s Offline Inv")));
+                            return new InvSeeMenu(syncId, playerInv, offlineInv, offlineXpAction, offlineOpenEnderChestAction, offlineTpAction, () -> finalOfflineCoords, () -> offlineXpLevel, () -> offlineDim, offlineStatusLoreSupplier, null);
+                        }, Component.literal(Lang.get("offline_inv", profile.name()))));
                         
                     } catch (Exception e) {
                         e.printStackTrace();
-                        source.sendFailure(Component.literal("Failed to load player data!"));
+                        source.sendFailure(Component.literal(Lang.get("failed_load_data")));
                     }
 
                 return 1;
