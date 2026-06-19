@@ -66,7 +66,7 @@ public class InvSeeMod implements ModInitializer {
                             
                             boolean isOnline = onlinePlayers.stream().anyMatch(p -> p.id().equals(uuid));
                             if (!isOnline) {
-                                com.mojang.authlib.GameProfile prof = new com.mojang.authlib.GameProfile(uuid, uuidStr);
+                                com.mojang.authlib.GameProfile prof = source.getServer().services().profileResolver().fetchById(uuid).orElseGet(() -> new com.mojang.authlib.GameProfile(uuid, uuidStr.substring(0, 16)));
                                 offlinePlayers.add(prof);
                             }
                         } catch (Exception e) {}
