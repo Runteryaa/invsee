@@ -129,22 +129,8 @@ public class InvSeeMod implements ModInitializer {
                                 onlineStatusLore.add(Component.literal("§d- " + effName + " " + (eff.getAmplifier() + 1)));
                             }
                         }
-                        onlineStatusLore.add(Component.literal(""));
-                        onlineStatusLore.add(Component.literal("§eLeft-Click: §aHeal & Feed"));
-                        onlineStatusLore.add(Component.literal("§eRight-Click: §aClear Effects"));
 
-                        java.util.function.Consumer<Integer> onlineStatusAction = (button) -> {
-                            if (button == 0) { // Left-Click
-                                onlineTarget.setHealth(onlineTarget.getMaxHealth());
-                                onlineTarget.getFoodData().setFoodLevel(20);
-                                onlineTarget.getFoodData().setSaturation(5.0f);
-                                user.sendSystemMessage(Component.literal("§aHealed and fed " + onlineTarget.getName().getString() + "!"));
-                            } else if (button == 1) { // Right-Click
-                                onlineTarget.removeAllEffects();
-                                user.sendSystemMessage(Component.literal("§aCleared effects of " + onlineTarget.getName().getString() + "!"));
-                            }
-                            user.closeContainer();
-                        };
+                        java.util.function.Consumer<Integer> onlineStatusAction = (button) -> {};
 
                         user.openMenu(new SimpleMenuProvider((syncId, playerInv, p) -> {
                             return new InvSeeMenu(syncId, playerInv, targetInv, onlineXpAction, onlineOpenEnderChestAction, onlineTpAction, onlineCoords, onlineXpLevel, onlineDim, onlineStatusLore, onlineStatusAction);
