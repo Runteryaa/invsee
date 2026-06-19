@@ -40,5 +40,7 @@ jobs:
           version: ${{ steps.get_version.outputs.version }}
           version-type: release
           loaders: fabric
-          game-versions: 26.1.2, 26.2
+          game-versions: |
+            26.1.2
+            26.2
           files: build/libs/!(*-sources).jar
