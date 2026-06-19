@@ -1,0 +1,33 @@
+name: Release
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+      - name: Setup JDK
+        uses: actions/setup-java@v5
+        with:
+          java-version: '25'
+          distribution: 'microsoft'
+      - name: Make gradle wrapper executable
+        run: chmod +x ./gradlew
+      - name: Build
+        run: ./gradlew build
+      - name: Get Version
+        id: get_version
+        run: |
+          VERSION=$(grep '^mod_version=' gradle.properties | cut -d'=' -f2 | tr -d '\r')
+          echo "version=v$VERSION" >> $GITHUB_OUTPUT
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.get_version.outputs.version }}
+          name: Release ${{ steps.get_version.outputs.version }}
+          files: build/libs/*.jar
+          generate_release_notes: true
