@@ -18,10 +18,10 @@
   "stolen_xp": "§aStolen %d XP!",
   "player_inventory": "%s's Inventory",
   "player_not_found": "Player not found or has no data!",
-  "location": "Location: %s",
-  "dimension": "Dimension: %s",
+  "location": "Location",
+  "dimension": "Dimension",
   "save_aborted_player_online": "Could not save changes: Player is now online!",
-  "xp_level": "XP: %d lvl",
+  "xp_level": "XP Level",
   "open_ender_chest": "Open Ender Chest",
   "failed_load_data": "Failed to load player data!",
   "prev_page": "Previous Page",
@@ -30,5 +30,6 @@
   "offline_players": "Offline Players",
   "page_info": "Page %d / %d",
   "click_view_offline": "Click to view Offline Players",
-  "click_view_online": "Click to view Online Players"
+  "click_view_online": "Click to view Online Players",
+  "status_online": "Online"
 }

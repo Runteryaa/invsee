@@ -18,10 +18,10 @@
   "stolen_xp": "§a%d XP çalındı!",
   "player_inventory": "%s'in Envanteri",
   "player_not_found": "Oyuncu bulunamadı veya verisi yok!",
-  "location": "Konum: %s",
-  "dimension": "Boyut: %s",
+  "location": "Konum",
+  "dimension": "Boyut",
   "save_aborted_player_online": "Değişiklikler kaydedilemedi: Oyuncu şu anda çevrimiçi!",
-  "xp_level": "XP: %d lvl",
+  "xp_level": "XP Seviyesi",
   "open_ender_chest": "Ender Sandığını Aç",
   "failed_load_data": "Oyuncu verisi yüklenemedi!",
   "prev_page": "Önceki Sayfa",
@@ -30,5 +30,6 @@
   "offline_players": "Çevrimdışı Oyuncular",
   "page_info": "Sayfa %d / %d",
   "click_view_offline": "Çevrimdışı Oyuncuları Görmek İçin Tıklayın",
-  "click_view_online": "Çevrimiçi Oyuncuları Görmek İçin Tıklayın"
+  "click_view_online": "Çevrimiçi Oyuncuları Görmek İçin Tıklayın",
+  "status_online": "Çevrimiçi"
 }

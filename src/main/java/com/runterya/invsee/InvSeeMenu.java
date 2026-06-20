@@ -19,11 +19,13 @@ public class InvSeeMenu extends ChestMenu {
     private final Runnable xpTransferAction;
     private final Runnable openEnderChestAction;
     private final Runnable tpAction;
-
     private final java.util.function.Consumer<Integer> statusAction;
 
+    private final java.util.function.Consumer<String> commandRunner;
+    private final java.util.function.Function<String, String> placeholderReplacer;
+
     public InvSeeMenu(int syncId, Inventory playerInv) {
-        this(syncId, playerInv, new SimpleContainer(41), () -> {}, () -> {}, () -> {}, () -> "0 0 0", () -> 0, () -> "minecraft:overworld", () -> null, b -> {});
+        this(syncId, playerInv, new SimpleContainer(41), () -> {}, () -> {}, () -> {}, () -> "0 0 0", () -> 0, () -> "minecraft:overworld", () -> null, b -> {}, cmd -> {}, s -> s);
     }
 
     private static class Wrapper implements Container {
@@ -32,12 +34,17 @@ public class InvSeeMenu extends ChestMenu {
         private final java.util.function.Supplier<Integer> targetXpLevelSupplier;
         private final java.util.function.Supplier<String> dimensionSupplier;
         private final java.util.function.Supplier<java.util.List<Component>> statusLoreSupplier;
-        public Wrapper(Container delegate, java.util.function.Supplier<String> coordsTextSupplier, java.util.function.Supplier<Integer> targetXpLevelSupplier, java.util.function.Supplier<String> dimensionSupplier, java.util.function.Supplier<java.util.List<Component>> statusLoreSupplier) { 
+        private final java.util.function.Function<String, String> placeholderReplacer;
+        private final String clientLang;
+        
+        public Wrapper(Container delegate, java.util.function.Supplier<String> coordsTextSupplier, java.util.function.Supplier<Integer> targetXpLevelSupplier, java.util.function.Supplier<String> dimensionSupplier, java.util.function.Supplier<java.util.List<Component>> statusLoreSupplier, java.util.function.Function<String, String> placeholderReplacer, String clientLang) { 
             this.delegate = delegate;
             this.coordsTextSupplier = coordsTextSupplier;
             this.targetXpLevelSupplier = targetXpLevelSupplier;
             this.dimensionSupplier = dimensionSupplier;
             this.statusLoreSupplier = statusLoreSupplier;
+            this.placeholderReplacer = placeholderReplacer;
+            this.clientLang = clientLang;
         }
         
         private int map(int slot) {
@@ -46,8 +53,7 @@ public class InvSeeMenu extends ChestMenu {
             if (slot == 2) return 37; // Leggings
             if (slot == 3) return 36; // Boots
             if (slot == 4) return 40; // Offhand
-            if (slot == 5 || slot == 6) return -1; // Dummy
-            if (slot == 7 || slot == 8) return -1; // Special
+            if (slot >= 5 && slot <= 8) return -1; // Dummy slots for buttons
             if (slot >= 9 && slot <= 35) return slot; // Main inv is 9-35
             if (slot >= 36 && slot <= 44) return slot - 36; // Hotbar is 0-8
             return -1;
@@ -56,30 +62,100 @@ public class InvSeeMenu extends ChestMenu {
         public int getContainerSize() { return 45; }
         public boolean isEmpty() { return delegate.isEmpty(); }
         public net.minecraft.world.item.ItemStack getItem(int slot) { 
-            if (slot == 5 && this.statusLoreSupplier != null) {
-                java.util.List<Component> currentLore = this.statusLoreSupplier.get();
-                if (currentLore != null) {
-                    ItemStack apple = new ItemStack(Items.GOLDEN_APPLE);
-                    apple.set(DataComponents.CUSTOM_NAME, Component.literal(" "));
-                    apple.set(DataComponents.LORE, new net.minecraft.world.item.component.ItemLore(currentLore));
-                    return apple;
+            if (slot >= 5 && slot <= 8) {
+                int buttonIndex = slot - 5;
+                if (Config.INSTANCE.top_row_buttons != null && buttonIndex < Config.INSTANCE.top_row_buttons.size()) {
+                    Config.ButtonConfig btn = Config.INSTANCE.top_row_buttons.get(buttonIndex);
+                    if (btn == null || "empty".equals(btn.type)) return ItemStack.EMPTY;
+                    
+                    if ("status".equals(btn.type) && this.statusLoreSupplier != null) {
+                        java.util.List<Component> currentLore = this.statusLoreSupplier.get();
+                        if (currentLore != null) {
+                            ItemStack apple = new ItemStack(Items.GOLDEN_APPLE);
+                            apple.set(DataComponents.CUSTOM_NAME, Component.literal(" "));
+                            apple.set(DataComponents.LORE, new net.minecraft.world.item.component.ItemLore(currentLore));
+                            return apple;
+                        }
+                    } else if ("location".equals(btn.type)) {
+                        ItemStack paper = new ItemStack(Items.PAPER);
+                        paper.set(DataComponents.CUSTOM_NAME, Component.literal("§b" + Lang.getFor(this.clientLang, "location", this.coordsTextSupplier.get())));
+                        paper.set(DataComponents.LORE, new net.minecraft.world.item.component.ItemLore(java.util.List.of(Component.literal("§7" + Lang.getFor(this.clientLang, "dimension", this.dimensionSupplier.get())))));
+                        return paper;
+                    } else if ("ender_chest".equals(btn.type)) {
+                        ItemStack enderChest = new ItemStack(Items.ENDER_CHEST);
+                        enderChest.set(DataComponents.CUSTOM_NAME, Component.literal("§6" + Lang.getFor(this.clientLang, "open_ender_chest")));
+                        return enderChest;
+                    } else if ("xp".equals(btn.type)) {
+                        ItemStack xpBottle = new ItemStack(Items.EXPERIENCE_BOTTLE);
+                        xpBottle.set(DataComponents.CUSTOM_NAME, Component.literal("§e" + Lang.getFor(this.clientLang, "xp_level", this.targetXpLevelSupplier.get())));
+                        return xpBottle;
+                    } else if ("custom".equals(btn.type)) {
+                        Identifier itemId = Identifier.tryParse(btn.item != null ? btn.item : "minecraft:stone");
+                        net.minecraft.world.item.Item item = net.minecraft.core.registries.BuiltInRegistries.ITEM.get(itemId).map(ref -> ref.value()).orElse(Items.STONE);
+                        ItemStack customStack = new ItemStack(item);
+                        if (btn.name != null && !btn.name.isEmpty()) {
+                            String name = this.placeholderReplacer != null ? this.placeholderReplacer.apply(btn.name) : btn.name;
+                            java.util.regex.Pattern langPattern = java.util.regex.Pattern.compile("\\{lang:([a-zA-Z0-9_]+)\\}");
+                            java.util.regex.Matcher matcher = langPattern.matcher(name);
+                            StringBuilder sb = new StringBuilder();
+                            while (matcher.find()) {
+                                matcher.appendReplacement(sb, Lang.getFor(this.clientLang, matcher.group(1)));
+                            }
+                            matcher.appendTail(sb);
+                            name = sb.toString();
+                            customStack.set(DataComponents.CUSTOM_NAME, Component.literal(name));
+                        }
+                        if (btn.lore != null && !btn.lore.isEmpty()) {
+                            java.util.List<Component> customLore = new java.util.ArrayList<>();
+                            for (String l : btn.lore) {
+                                if (l.contains("{effects}") && this.statusLoreSupplier != null) {
+                                    java.util.List<Component> sLore = this.statusLoreSupplier.get();
+                                    if (sLore != null) {
+                                        boolean foundEffects = false;
+                                        for (Component comp : sLore) {
+                                            if (foundEffects || comp.getString().contains(Lang.getFor(this.clientLang, "effects"))) {
+                                                foundEffects = true;
+                                                if (comp.getString().trim().isEmpty() || comp.getString().contains(Lang.getFor(this.clientLang, "last_seen"))) {
+                                                    foundEffects = false;
+                                                    continue;
+                                                }
+                                                customLore.add(comp);
+                                            }
+                                        }
+                                    }
+                                    continue;
+                                }
+                                if (l.contains("{lastseen}") && this.statusLoreSupplier != null) {
+                                    java.util.List<Component> sLore = this.statusLoreSupplier.get();
+                                    if (sLore != null) {
+                                        for (Component comp : sLore) {
+                                            if (comp.getString().contains(Lang.getFor(this.clientLang, "last_seen"))) {
+                                                customLore.add(Component.literal(""));
+                                                customLore.add(comp);
+                                            }
+                                        }
+                                    }
+                                    continue;
+                                }
+                                String loreLine = this.placeholderReplacer != null ? this.placeholderReplacer.apply(l) : l;
+                                java.util.regex.Pattern langPattern = java.util.regex.Pattern.compile("\\{lang:([a-zA-Z0-9_]+)\\}");
+                                java.util.regex.Matcher matcher = langPattern.matcher(loreLine);
+                                StringBuilder sb = new StringBuilder();
+                                while (matcher.find()) {
+                                    matcher.appendReplacement(sb, Lang.getFor(this.clientLang, matcher.group(1)));
+                                }
+                                matcher.appendTail(sb);
+                                loreLine = sb.toString();
+                                if (loreLine != null && (!loreLine.isEmpty() || l.isEmpty())) {
+                                    customLore.add(Component.literal(loreLine));
+                                }
+                            }
+                            customStack.set(DataComponents.LORE, new net.minecraft.world.item.component.ItemLore(customLore));
+                        }
+                        return customStack;
+                    }
                 }
-            }
-            if (slot == 6) {
-                ItemStack paper = new ItemStack(Items.PAPER);
-                paper.set(DataComponents.CUSTOM_NAME, Component.literal("§b" + Lang.get("location", this.coordsTextSupplier.get())));
-                paper.set(DataComponents.LORE, new net.minecraft.world.item.component.ItemLore(java.util.List.of(Component.literal("§7" + Lang.get("dimension", this.dimensionSupplier.get())))));
-                return paper;
-            }
-            if (slot == 8) {
-                ItemStack xpBottle = new ItemStack(Items.EXPERIENCE_BOTTLE);
-                xpBottle.set(DataComponents.CUSTOM_NAME, Component.literal("§e" + Lang.get("xp_level", this.targetXpLevelSupplier.get())));
-                return xpBottle;
-            }
-            if (slot == 7) {
-                ItemStack enderChest = new ItemStack(Items.ENDER_CHEST);
-                enderChest.set(DataComponents.CUSTOM_NAME, Component.literal("§6" + Lang.get("open_ender_chest")));
-                return enderChest;
+                return ItemStack.EMPTY;
             }
             int m = map(slot);
             return m != -1 ? delegate.getItem(m) : net.minecraft.world.item.ItemStack.EMPTY; 
@@ -103,12 +179,18 @@ public class InvSeeMenu extends ChestMenu {
         public void stopOpen(net.minecraft.world.entity.ContainerUser user) { delegate.stopOpen(user); }
     }
 
-    public InvSeeMenu(int syncId, Inventory playerInv, Container target, Runnable xpTransferAction, Runnable openEnderChestAction, Runnable tpAction, java.util.function.Supplier<String> coordsTextSupplier, java.util.function.Supplier<Integer> targetXpLevelSupplier, java.util.function.Supplier<String> dimensionSupplier, java.util.function.Supplier<java.util.List<Component>> statusLoreSupplier, java.util.function.Consumer<Integer> statusAction) {
-        super(MenuType.GENERIC_9x5, syncId, playerInv, new Wrapper(target, coordsTextSupplier, targetXpLevelSupplier, dimensionSupplier, statusLoreSupplier), 5);
+
+    private final String clientLang;
+
+    public InvSeeMenu(int syncId, Inventory playerInv, Container target, Runnable xpTransferAction, Runnable openEnderChestAction, Runnable tpAction, java.util.function.Supplier<String> coordsTextSupplier, java.util.function.Supplier<Integer> targetXpLevelSupplier, java.util.function.Supplier<String> dimensionSupplier, java.util.function.Supplier<java.util.List<Component>> statusLoreSupplier, java.util.function.Consumer<Integer> statusAction, java.util.function.Consumer<String> commandRunner, java.util.function.Function<String, String> placeholderReplacer) {
+        super(MenuType.GENERIC_9x5, syncId, playerInv, new Wrapper(target, coordsTextSupplier, targetXpLevelSupplier, dimensionSupplier, statusLoreSupplier, placeholderReplacer, playerInv.player instanceof net.minecraft.server.level.ServerPlayer sp ? InvSeeMod.getClientLang(sp) : "en_us"), 5);
+        this.clientLang = playerInv.player instanceof net.minecraft.server.level.ServerPlayer sp2 ? InvSeeMod.getClientLang(sp2) : "en_us";
         this.xpTransferAction = xpTransferAction;
         this.openEnderChestAction = openEnderChestAction;
         this.tpAction = tpAction;
         this.statusAction = statusAction;
+        this.commandRunner = commandRunner;
+        this.placeholderReplacer = placeholderReplacer;
 
         Container wrapped = this.getContainer();
 
@@ -129,20 +211,34 @@ public class InvSeeMenu extends ChestMenu {
     public void clicked(int slotId, int button, ContainerInput clickType, Player player) {
         if (slotId >= 0 && slotId < this.slots.size()) {
             Slot slot = this.slots.get(slotId);
-            if (slot.getContainerSlot() == 8 && slot.container instanceof Wrapper) {
-                this.xpTransferAction.run();
-                return;
-            }
-            if (slot.getContainerSlot() == 7 && slot.container instanceof Wrapper) {
-                this.openEnderChestAction.run();
-                return;
-            }
-            if (slot.getContainerSlot() == 6 && slot.container instanceof Wrapper) {
-                this.tpAction.run();
-                return;
-            }
-            if (slot.getContainerSlot() == 5 && slot.container instanceof Wrapper) {
-                if (this.statusAction != null) this.statusAction.accept(button);
+            if (slot.container instanceof Wrapper && slot.getContainerSlot() >= 5 && slot.getContainerSlot() <= 8) {
+                int buttonIndex = slot.getContainerSlot() - 5;
+                if (Config.INSTANCE.top_row_buttons != null && buttonIndex < Config.INSTANCE.top_row_buttons.size()) {
+                    Config.ButtonConfig btn = Config.INSTANCE.top_row_buttons.get(buttonIndex);
+                    if (btn != null) {
+                        boolean isInternalCmd = false;
+                        if (btn.command != null) {
+                            if ("#xp".equals(btn.command)) { this.xpTransferAction.run(); isInternalCmd = true; }
+                            else if ("#enderchest".equals(btn.command)) { this.openEnderChestAction.run(); isInternalCmd = true; }
+                            else if ("#tp".equals(btn.command)) { this.tpAction.run(); isInternalCmd = true; }
+                            else if ("#status".equals(btn.command)) { if (this.statusAction != null) this.statusAction.accept(button); isInternalCmd = true; }
+                        }
+
+                        if (!isInternalCmd && btn.command != null && !btn.command.isEmpty() && this.commandRunner != null) {
+                            this.commandRunner.accept(btn.command);
+                        }
+                        
+                        if ("xp".equals(btn.type)) {
+                            this.xpTransferAction.run();
+                        } else if ("ender_chest".equals(btn.type)) {
+                            this.openEnderChestAction.run();
+                        } else if ("location".equals(btn.type)) {
+                            this.tpAction.run();
+                        } else if ("status".equals(btn.type)) {
+                            if (this.statusAction != null) this.statusAction.accept(button);
+                        }
+                    }
+                }
                 return;
             }
         }

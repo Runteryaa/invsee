@@ -21,6 +21,7 @@ public class PlayerListMenu extends ChestMenu {
     private final List<GameProfile> offlinePlayers;
     private int page;
     private final java.util.function.Consumer<GameProfile> onSelect;
+    private final String clientLang;
 
     private static final int ITEMS_PER_PAGE = 18;
     private static final int PREV_SLOT = 18; // Row 3, slot 0
@@ -28,6 +29,7 @@ public class PlayerListMenu extends ChestMenu {
 
     public PlayerListMenu(int syncId, Inventory playerInv, List<GameProfile> onlinePlayers, List<GameProfile> offlinePlayers, int page, java.util.function.Consumer<GameProfile> onSelect) {
         super(MenuType.GENERIC_9x3, syncId, playerInv, new SimpleContainer(27), 3);
+        this.clientLang = InvSeeMod.getClientLang((net.minecraft.server.level.ServerPlayer) playerInv.player);
         this.onlinePlayers = onlinePlayers;
         this.offlinePlayers = offlinePlayers;
         this.page = page;
@@ -93,28 +95,28 @@ public class PlayerListMenu extends ChestMenu {
 
         if (page > 0) {
             ItemStack prev = new ItemStack(Items.ARROW);
-            prev.set(DataComponents.CUSTOM_NAME, Component.literal("§e" + Lang.get("prev_page")));
+            prev.set(DataComponents.CUSTOM_NAME, Component.literal("§e" + Lang.getFor(this.clientLang, "prev_page")));
             container.setItem(PREV_SLOT, prev);
         }
 
         if (page < totalPages - 1) {
             ItemStack next = new ItemStack(Items.ARROW);
-            next.set(DataComponents.CUSTOM_NAME, Component.literal("§e" + Lang.get("next_page")));
+            next.set(DataComponents.CUSTOM_NAME, Component.literal("§e" + Lang.getFor(this.clientLang, "next_page")));
             container.setItem(NEXT_SLOT, next);
         }
         
         ItemStack info = new ItemStack(isOnlinePage ? Items.LIME_CONCRETE : Items.RED_CONCRETE);
-        info.set(DataComponents.CUSTOM_NAME, Component.literal(isOnlinePage ? "§a" + Lang.get("online_players") : "§c" + Lang.get("offline_players")));
+        info.set(DataComponents.CUSTOM_NAME, Component.literal(isOnlinePage ? "§a" + Lang.getFor(this.clientLang, "online_players") : "§c" + Lang.getFor(this.clientLang, "offline_players")));
         
         java.util.List<Component> loreList = new java.util.ArrayList<>();
-        loreList.add(Component.literal("§b" + Lang.get("page_info", page + 1, totalPages)));
+        loreList.add(Component.literal("§b" + Lang.getFor(this.clientLang, "page_info", page + 1, totalPages)));
         
         if (isOnlinePage && !offlinePlayers.isEmpty()) {
             loreList.add(Component.literal(""));
-            loreList.add(Component.literal("§e" + Lang.get("click_view_offline")));
+            loreList.add(Component.literal("§e" + Lang.getFor(this.clientLang, "click_view_offline")));
         } else if (!isOnlinePage && !onlinePlayers.isEmpty()) {
             loreList.add(Component.literal(""));
-            loreList.add(Component.literal("§e" + Lang.get("click_view_online")));
+            loreList.add(Component.literal("§e" + Lang.getFor(this.clientLang, "click_view_online")));
         }
         
         info.set(DataComponents.LORE, new net.minecraft.world.item.component.ItemLore(loreList));

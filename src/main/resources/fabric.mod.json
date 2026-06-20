@@ -15,9 +15,15 @@
 	"license": "CC0-1.0",
 	"icon": "assets/invsee/icon.png",
 	"environment": "*",
+	"mixins": [
+		"invsee.client.mixins.json"
+	],
 	"entrypoints": {
 		"main": [
 			"com.runterya.invsee.InvSeeMod"
+		],
+		"client": [
+			"com.runterya.invsee.client.InvSeeClient"
 		]
 	},
 	"depends": {

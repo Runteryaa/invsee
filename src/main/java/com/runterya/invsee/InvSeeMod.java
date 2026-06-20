@@ -26,15 +26,43 @@ import net.minecraft.server.players.NameAndId;
 import java.io.File;
 
 public class InvSeeMod implements ModInitializer {
+    // Stores client language per player UUID
+    private static final java.util.Map<java.util.UUID, String> clientLangs = new java.util.concurrent.ConcurrentHashMap<>();
+
+    public static String getClientLang(ServerPlayer player) {
+        return clientLangs.getOrDefault(player.getUUID(), LangHelper.getClientLanguage(player));
+    }
+
     @Override
     public void onInitialize() {
         Config config = Config.load();
         Lang.setLanguage(config.language);
 
+        // Register the lang_sync payload on server-side
+        net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry.serverboundPlay()
+            .register(LangSyncPayload.ID, LangSyncPayload.CODEC);
+
+        // Receive language preference from client
+        net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.registerGlobalReceiver(
+            LangSyncPayload.ID,
+            (payload, context) -> {
+                String lang = payload.lang();
+                if (lang != null && lang.matches("^[a-z]{2}_[a-z]{2}$")) {
+                    clientLangs.put(context.player().getUUID(), lang);
+                }
+            }
+        );
+
+        // Clean up when player disconnects
+        net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
+            clientLangs.remove(handler.player.getUUID());
+        });
+
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
             registerCommands(dispatcher, registryAccess);
         });
     }
+
 
     private void registerCommands(CommandDispatcher<CommandSourceStack> dispatcher, CommandBuildContext registryAccess) {
         dispatcher.register(Commands.literal("invsee")
@@ -221,10 +249,28 @@ public class InvSeeMod implements ModInitializer {
                         };
 
                         java.util.function.Consumer<Integer> onlineStatusAction = (button) -> {};
+                        java.util.function.Consumer<String> commandRunner = cmd -> source.getServer().getCommands().performPrefixedCommand(source, cmd);
+                        java.util.function.Function<String, String> placeholderReplacer = s -> {
+                            ServerPlayer t = source.getServer().getPlayerList().getPlayer(profile.id());
+                            if (t == null) t = onlineTarget;
+                            String res = s.replace("{player}", profile.name());
+                            res = res.replace("{health}", String.format(java.util.Locale.US, "%.1f", t.getHealth()));
+                            res = res.replace("{maxhealth}", String.format(java.util.Locale.US, "%.1f", t.getMaxHealth()));
+                            res = res.replace("{food}", String.valueOf(t.getFoodData().getFoodLevel()));
+                            res = res.replace("{xplevel}", String.valueOf(t.experienceLevel));
+                            res = res.replace("{x}", String.format(java.util.Locale.US, "%.1f", t.getX()));
+                            res = res.replace("{y}", String.format(java.util.Locale.US, "%.1f", t.getY()));
+                            res = res.replace("{z}", String.format(java.util.Locale.US, "%.1f", t.getZ()));
+                            String dimKey = t.level().dimension().toString();
+                            dimKey = dimKey.substring(dimKey.lastIndexOf('/') + 1, dimKey.length() - 1).trim();
+                            res = res.replace("{dimension}", dimKey);
+                            return res;
+                        };
+                        String clientLang = InvSeeMod.getClientLang(user);
 
                         user.openMenu(new SimpleMenuProvider((syncId, playerInv, p) -> {
-                            return new InvSeeMenu(syncId, playerInv, targetInv, onlineXpAction, onlineOpenEnderChestAction, onlineTpAction, onlineCoordsSupplier, onlineXpLevelSupplier, onlineDimSupplier, onlineStatusLoreSupplier, onlineStatusAction);
-                        }, Component.literal(Lang.get("player_inventory", profile.name()))));
+                            return new InvSeeMenu(syncId, playerInv, targetInv, onlineXpAction, onlineOpenEnderChestAction, onlineTpAction, onlineCoordsSupplier, onlineXpLevelSupplier, onlineDimSupplier, onlineStatusLoreSupplier, onlineStatusAction, commandRunner, placeholderReplacer);
+                        }, Component.literal(Lang.getFor(clientLang, "player_inventory", profile.name()))));
                         return 1;
                     }
 
@@ -483,9 +529,30 @@ public class InvSeeMod implements ModInitializer {
                             return lore;
                         };
 
+                        String clientLang2 = InvSeeMod.getClientLang(user);
+                        java.util.function.Consumer<String> offlineCommandRunner = cmd -> source.getServer().getCommands().performPrefixedCommand(source, cmd);
+                        java.util.function.Function<String, String> offlinePlaceholderReplacer = s -> {
+                            String res = s.replace("{player}", profile.name());
+                            res = res.replace("{health}", String.format(java.util.Locale.US, "%.1f", nbt.getFloat("Health").orElse(20.0f)));
+                            res = res.replace("{maxhealth}", "20.0");
+                            res = res.replace("{food}", String.valueOf(nbt.getInt("foodLevel").orElse(20)));
+                            res = res.replace("{xplevel}", String.valueOf(nbt.getInt("XpLevel").orElse(0)));
+                            ListTag posTag2 = nbt.getListOrEmpty("Pos");
+                            if (posTag2.size() == 3) {
+                                res = res.replace("{x}", String.format(java.util.Locale.US, "%.1f", posTag2.getDouble(0).orElse(0.0)));
+                                res = res.replace("{y}", String.format(java.util.Locale.US, "%.1f", posTag2.getDouble(1).orElse(0.0)));
+                                res = res.replace("{z}", String.format(java.util.Locale.US, "%.1f", posTag2.getDouble(2).orElse(0.0)));
+                            } else {
+                                res = res.replace("{x}", "0.0").replace("{y}", "0.0").replace("{z}", "0.0");
+                            }
+                            String offlineDimStr = nbt.getString("Dimension").orElse("minecraft:overworld");
+                            res = res.replace("{dimension}", offlineDimStr);
+                            return res;
+                        };
+
                         user.openMenu(new SimpleMenuProvider((syncId, playerInv, p) -> {
-                            return new InvSeeMenu(syncId, playerInv, offlineInv, offlineXpAction, offlineOpenEnderChestAction, offlineTpAction, () -> finalOfflineCoords, () -> offlineXpLevel, () -> offlineDim, offlineStatusLoreSupplier, null);
-                        }, Component.literal(Lang.get("offline_inv", profile.name()))));
+                            return new InvSeeMenu(syncId, playerInv, offlineInv, offlineXpAction, offlineOpenEnderChestAction, offlineTpAction, () -> finalOfflineCoords, () -> offlineXpLevel, () -> offlineDim, offlineStatusLoreSupplier, null, offlineCommandRunner, offlinePlaceholderReplacer);
+                        }, Component.literal(Lang.getFor(clientLang2, "offline_inv", profile.name()))));
                         
                     } catch (Exception e) {
                         e.printStackTrace();
