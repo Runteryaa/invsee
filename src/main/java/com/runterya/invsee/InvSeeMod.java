@@ -533,58 +533,60 @@ public class InvSeeMod implements ModInitializer {
                             @Override
                             public void stopOpen(net.minecraft.world.entity.ContainerUser p) {
                                 super.stopOpen(p);
-                                ServerPlayer nowOnline = source.getServer().getPlayerList().getPlayer(profile.id());
-                                if (nowOnline != null) {
-                                    user.sendSystemMessage(Component.literal("§c" + Lang.get("save_aborted_player_online")));
-                                } else {
-                                    try {
-                                        CompoundTag latestNbt = NbtIo.readCompressed(playerFile.toPath(), NbtAccounter.unlimitedHeap());
-                                        ListTag newInvTag = new ListTag();
-                                        for (int i = 0; i < this.getContainerSize(); i++) {
-                                            ItemStack stack = this.getItem(i);
-                                            if (!stack.isEmpty()) {
-                                                net.minecraft.nbt.Tag savedTag = ItemStack.CODEC.encodeStart(ops, stack).getOrThrow();
-                                                if (savedTag instanceof CompoundTag) {
-                                                    CompoundTag itemTag = (CompoundTag) savedTag;
-                                                    int slot = i;
-                                                    if (i >= 36 && i < 40) slot = i - 36 + 100;
-                                                    else if (i == 40) slot = 150;
-                                                    itemTag.putByte("Slot", (byte) slot);
-                                                    newInvTag.add(itemTag);
+                                source.getServer().execute(() -> {
+                                    ServerPlayer nowOnline = source.getServer().getPlayerList().getPlayer(profile.id());
+                                    if (nowOnline != null) {
+                                        user.sendSystemMessage(Component.literal("§c" + Lang.get("save_aborted_player_online")));
+                                    } else {
+                                        try {
+                                            CompoundTag latestNbt = NbtIo.readCompressed(playerFile.toPath(), NbtAccounter.unlimitedHeap());
+                                            ListTag newInvTag = new ListTag();
+                                            for (int i = 0; i < this.getContainerSize(); i++) {
+                                                ItemStack stack = this.getItem(i);
+                                                if (!stack.isEmpty()) {
+                                                    net.minecraft.nbt.Tag savedTag = ItemStack.CODEC.encodeStart(ops, stack).getOrThrow();
+                                                    if (savedTag instanceof CompoundTag) {
+                                                        CompoundTag itemTag = (CompoundTag) savedTag;
+                                                        int slot = i;
+                                                        if (i >= 36 && i < 40) slot = i - 36 + 100;
+                                                        else if (i == 40) slot = 150;
+                                                        itemTag.putByte("Slot", (byte) slot);
+                                                        newInvTag.add(itemTag);
+                                                    }
                                                 }
                                             }
-                                        }
-                                        latestNbt.put("Inventory", newInvTag);
+                                            latestNbt.put("Inventory", newInvTag);
 
-                                        if (latestNbt.contains("equipment")) {
-                                            CompoundTag equipmentTag = latestNbt.getCompoundOrEmpty("equipment");
-                                            
-                                            ItemStack head = this.getItem(39);
-                                            equipmentTag.put("head", head.isEmpty() ? new CompoundTag() : ItemStack.CODEC.encodeStart(ops, head).getOrThrow());
-                                            
-                                            ItemStack chest = this.getItem(38);
-                                            equipmentTag.put("chest", chest.isEmpty() ? new CompoundTag() : ItemStack.CODEC.encodeStart(ops, chest).getOrThrow());
-                                            
-                                            ItemStack legs = this.getItem(37);
-                                            equipmentTag.put("legs", legs.isEmpty() ? new CompoundTag() : ItemStack.CODEC.encodeStart(ops, legs).getOrThrow());
-                                            
-                                            ItemStack feet = this.getItem(36);
-                                            equipmentTag.put("feet", feet.isEmpty() ? new CompoundTag() : ItemStack.CODEC.encodeStart(ops, feet).getOrThrow());
-                                            
-                                            ItemStack offhand = this.getItem(40);
-                                            equipmentTag.put("offhand", offhand.isEmpty() ? new CompoundTag() : ItemStack.CODEC.encodeStart(ops, offhand).getOrThrow());
-                                            
-                                            latestNbt.put("equipment", equipmentTag);
-                                        }
+                                            if (latestNbt.contains("equipment")) {
+                                                CompoundTag equipmentTag = latestNbt.getCompoundOrEmpty("equipment");
+                                                
+                                                ItemStack head = this.getItem(39);
+                                                equipmentTag.put("head", head.isEmpty() ? new CompoundTag() : ItemStack.CODEC.encodeStart(ops, head).getOrThrow());
+                                                
+                                                ItemStack chest = this.getItem(38);
+                                                equipmentTag.put("chest", chest.isEmpty() ? new CompoundTag() : ItemStack.CODEC.encodeStart(ops, chest).getOrThrow());
+                                                
+                                                ItemStack legs = this.getItem(37);
+                                                equipmentTag.put("legs", legs.isEmpty() ? new CompoundTag() : ItemStack.CODEC.encodeStart(ops, legs).getOrThrow());
+                                                
+                                                ItemStack feet = this.getItem(36);
+                                                equipmentTag.put("feet", feet.isEmpty() ? new CompoundTag() : ItemStack.CODEC.encodeStart(ops, feet).getOrThrow());
+                                                
+                                                ItemStack offhand = this.getItem(40);
+                                                equipmentTag.put("offhand", offhand.isEmpty() ? new CompoundTag() : ItemStack.CODEC.encodeStart(ops, offhand).getOrThrow());
+                                                
+                                                latestNbt.put("equipment", equipmentTag);
+                                            }
 
-                                        java.io.File tempFile = java.io.File.createTempFile(profile.id().toString(), ".dat", playerFile.getParentFile());
-                                        NbtIo.writeCompressed(latestNbt, tempFile.toPath());
-                                        java.nio.file.Files.move(tempFile.toPath(), playerFile.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-                                        playerFile.setLastModified(originalLastModified);
-                                    } catch (Exception e) {
-                                        e.printStackTrace();
+                                            java.io.File tempFile = java.io.File.createTempFile(profile.id().toString(), ".dat", playerFile.getParentFile());
+                                            NbtIo.writeCompressed(latestNbt, tempFile.toPath());
+                                            java.nio.file.Files.move(tempFile.toPath(), playerFile.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                                            playerFile.setLastModified(originalLastModified);
+                                        } catch (Exception e) {
+                                            e.printStackTrace();
+                                        }
                                     }
-                                }
+                                });
                             }
                         };
 
