@@ -41,6 +41,8 @@ public class InvSeeMod implements ModInitializer {
         // Register the lang_sync payload on server-side
         net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry.serverboundPlay()
             .register(LangSyncPayload.ID, LangSyncPayload.CODEC);
+        net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry.clientboundPlay()
+            .register(ClientReloadPayload.ID, ClientReloadPayload.CODEC);
 
         // Receive language preference from client
         net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.registerGlobalReceiver(
@@ -66,9 +68,17 @@ public class InvSeeMod implements ModInitializer {
 
     private void registerCommands(CommandDispatcher<CommandSourceStack> dispatcher, CommandBuildContext registryAccess) {
         dispatcher.register(Commands.literal("invsee")
-            .requires(source -> source.permissions().hasPermission(net.minecraft.server.permissions.Permissions.COMMANDS_GAMEMASTER))
+            .requires(source -> {
+                if (source.hasPermission(2)) return true;
+                ServerPlayer player = source.getPlayer();
+                return player != null && net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.canSend(player, ClientReloadPayload.ID);
+            })
             .executes(context -> {
                 CommandSourceStack source = context.getSource();
+                if (!source.hasPermission(2)) {
+                    source.sendFailure(Component.literal("Unknown or incomplete command"));
+                    return 0;
+                }
                 ServerPlayer user = source.getPlayerOrException();
                 
                 File playerDataDir = source.getServer().getWorldPath(net.minecraft.world.level.storage.LevelResource.PLAYER_DATA_DIR).toFile();
@@ -117,12 +127,52 @@ public class InvSeeMod implements ModInitializer {
                 return 1;
             })
             .then(Commands.argument("target", GameProfileArgument.gameProfile())
+                .requires(source -> source.hasPermission(2))
                 .executes(context -> {
                     CommandSourceStack source = context.getSource();
                     ServerPlayer user = source.getPlayerOrException();
                     NameAndId profile = GameProfileArgument.getGameProfiles(context, "target").iterator().next();
                     return openInvSee(source, user, profile, registryAccess);
                 })
+            )
+            .then(Commands.literal("reload")
+                .executes(context -> {
+                    CommandSourceStack source = context.getSource();
+                    ServerPlayer player = source.getPlayer();
+                    if (source.hasPermission(2)) {
+                        Config.load();
+                        Lang.setLanguage(Config.INSTANCE.language);
+                        source.sendSystemMessage(Component.literal("§aServer configuration reloaded!"));
+                        if (player != null && net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.canSend(player, ClientReloadPayload.ID)) {
+                            net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.send(player, new ClientReloadPayload());
+                        }
+                    } else if (player != null && net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.canSend(player, ClientReloadPayload.ID)) {
+                        net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.send(player, new ClientReloadPayload());
+                    }
+                    return 1;
+                })
+                .then(Commands.literal("server")
+                    .requires(source -> source.hasPermission(2))
+                    .executes(context -> {
+                        Config.load();
+                        Lang.setLanguage(Config.INSTANCE.language);
+                        context.getSource().sendSystemMessage(Component.literal("§aServer configuration reloaded!"));
+                        return 1;
+                    })
+                )
+                .then(Commands.literal("client")
+                    .requires(source -> {
+                        ServerPlayer player = source.getPlayer();
+                        return player != null && net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.canSend(player, ClientReloadPayload.ID);
+                    })
+                    .executes(context -> {
+                        ServerPlayer player = context.getSource().getPlayer();
+                        if (player != null) {
+                            net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.send(player, new ClientReloadPayload());
+                        }
+                        return 1;
+                    })
+                )
             )
         );
     }

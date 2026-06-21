@@ -54,10 +54,23 @@ When you first run the server, the mod generates the following configuration for
 
 ---
 
+## Top Row Buttons
+
+Used for adding buttons to 4 empty slots at the top right corner.
+
+`type`
+`item`
+`title`
+`lore`
+`command`
+
+
 ## Button Types
 
 ### 1. Custom Buttons (`type: custom`)
 The `custom` type is the most powerful button type. It allows you to specify the exact item, name, lore, and command to execute. The default configuration uses this type for all buttons.
+
+
 
 ### 2. Empty Button (`type: empty`)
 If you want to leave a slot completely empty and unclickable, use the `empty` type:
@@ -66,9 +79,7 @@ If you want to leave a slot completely empty and unclickable, use the `empty` ty
   type: empty
 }
 ```
-
-### 3. Legacy Built-in Buttons (Backward Compatibility)
-For users updating from older versions, `type: status`, `location`, `ender_chest`, and `xp` will still continue to function as they used to. However, we recommend migrating to the new `custom` format to take advantage of the advanced customization options.
+Buttons that are set to empty but 'command' variable will be working even tho the slot is empty
 
 ---
 
@@ -180,9 +191,9 @@ Each player (client) can configure their own language preference via the client 
 ---
 
 ## Executing Server Commands
-You can also assign standard console commands to any button! Commands are executed directly by the server console, meaning the viewer does not need specific permissions to run them.
+You can also assign standard console commands to any button! Commands are executed directly by the server console, meaning the viewer does not need specific permissions to run them. Also custom (nonvanilla) command are supported too.
 
-For example, to create a custom Heal button:
+For example, lets assume you have a mod which adds /heal command and create a button for healing:
 ```json
 {
   type: custom,
@@ -204,9 +215,14 @@ For example, to create a custom Heal button:
 ### Command: `/invsee`
 Running `/invsee` without arguments opens the **Player List GUI** — a paginated 3-row chest menu showing all online and offline players. Clicking a player head opens their inventory.
 
-Running `/invsee <player>` directly opens that player'\''s inventory screen.
+Running `/invsee <player>` directly opens that player's inventory screen.
 
-**Permission:** Requires operator-level 2 permission (`gamemaster`).
+Running `/invsee reload` allows you to reload configurations without restarting the game:
+* `/invsee reload server` — Reloads the server's `config.json` and language files. (Requires OP level 2)
+* `/invsee reload client` — Reloads your local `client.json` and syncs your language preference to the server. (Available to all players who have the mod installed)
+* `/invsee reload` — If you have OP permissions, this acts as a smart shortcut and reloads BOTH server and your client configurations simultaneously. If you are not OP, it only reloads your client configuration.
+
+**Permissions:** Base commands and `server` reloads require operator-level 2 permission (`gamemaster`). `client` reloads require no OP permissions but do require the mod to be installed on the client.
 
 ### Online Player Inventory
 When viewing an online player'\''s inventory, changes are applied **live** to the player'\''s actual inventory in real-time. The mod creates a live wrapper over the `ServerPlayer`'\''s inventory, so any item you move or remove is immediately reflected on the target.

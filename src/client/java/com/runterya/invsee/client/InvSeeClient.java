@@ -1,5 +1,6 @@
 package com.runterya.invsee.client;
 
+import com.runterya.invsee.ClientReloadPayload;
 import com.runterya.invsee.LangSyncPayload;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
@@ -15,6 +16,16 @@ public class InvSeeClient implements ClientModInitializer {
 
         ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
             sendLangPreference();
+        });
+
+        ClientPlayNetworking.registerGlobalReceiver(ClientReloadPayload.ID, (payload, context) -> {
+            context.client().execute(() -> {
+                config = ClientConfig.load();
+                sendLangPreference();
+                if (context.client().player != null) {
+                    context.client().player.displayClientMessage(net.minecraft.network.chat.Component.literal("§aClient configuration reloaded!"), false);
+                }
+            });
         });
     }
 
