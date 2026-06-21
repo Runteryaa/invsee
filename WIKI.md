@@ -118,14 +118,14 @@ Instead of running console commands, you can attach the mod's complex internal J
 
 * `#dummy` - A dummy command that does nothing (useful for buttons that are strictly informational).
 * `#tp` - Safely prompts the viewer in chat to teleport to the player's exact location.
-* `#enderchest` - Opens the custom GUI for the player's Ender Chest (works safely for offline NBT).
-* `#xp` - Drains the target's XP and transfers it directly to the viewer's XP bar.
+* `#open_ender` - Opens the custom GUI for the player's Ender Chest (works safely for offline NBT).
+* `#transfer_xp` - Drains the target's XP and transfers it directly to the viewer's XP bar (or another player if specified via `/invsee action`).
 * `#clear_inv` - Instantly wipes the player's main inventory (armor and offhand included).
 * `#clear_ender` - Instantly wipes the player's Ender Chest inventory.
 * `#accessories` - Opens a 9-slot menu to view the player's accessories/trinkets (WIP).
 * `#heal` - Fully heals the target player (sets health to 20.0). Works on offline players too.
 * `#feed` - Fully feeds the target player (sets food level to 20). Works on offline players too.
-* `#smite` - Strikes the target player with a lightning bolt (Online players only).
+* `#lightning` - Summons a lightning bolt exactly where the player is standing (only works when target is online).
 
 ---
 

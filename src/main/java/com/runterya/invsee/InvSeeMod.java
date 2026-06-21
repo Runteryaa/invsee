@@ -24,8 +24,11 @@ import net.minecraft.nbt.NbtIo;
 import net.minecraft.nbt.NbtAccounter;
 import net.minecraft.server.players.NameAndId;
 import java.io.File;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class InvSeeMod implements ModInitializer {
+    public static final Logger LOGGER = LoggerFactory.getLogger("invsee");
     // Stores client language per player UUID
     private static final java.util.Map<java.util.UUID, String> clientLangs = new java.util.concurrent.ConcurrentHashMap<>();
 
@@ -52,6 +55,7 @@ public class InvSeeMod implements ModInitializer {
 
     @Override
     public void onInitialize() {
+        LOGGER.info("InvSee mod loaded successfully!");
         Config config = Config.load();
         Lang.setLanguage(config.language);
 
@@ -67,6 +71,9 @@ public class InvSeeMod implements ModInitializer {
             (payload, context) -> {
                 String lang = payload.lang();
                 if (lang != null && lang.matches("^[a-z]{2}_[a-z]{2}$")) {
+                    if (!clientLangs.containsKey(context.player().getUUID())) {
+                        LOGGER.info("Player {} joined with InvSee client mod.", context.player().getName().getString());
+                    }
                     clientLangs.put(context.player().getUUID(), lang);
                 }
             }
@@ -155,14 +162,23 @@ public class InvSeeMod implements ModInitializer {
             .then(Commands.literal("action")
                 .requires(source -> source.permissions().hasPermission(net.minecraft.server.permissions.Permissions.COMMANDS_GAMEMASTER))
                 .then(Commands.argument("action_id", com.mojang.brigadier.arguments.StringArgumentType.word())
-                    .suggests((context, builder) -> net.minecraft.commands.SharedSuggestionProvider.suggest(new String[]{"#clear_inv", "#clear_ender", "#heal", "#feed", "#smite"}, builder))
+                    .suggests((context, builder) -> net.minecraft.commands.SharedSuggestionProvider.suggest(new String[]{"#clear_inv", "#clear_ender", "#heal", "#feed", "#lightning", "#open_ender", "#transfer_xp", "#tp", "#accessories"}, builder))
                     .then(Commands.argument("target", GameProfileArgument.gameProfile())
                         .executes(context -> {
                             CommandSourceStack source = context.getSource();
                             String actionId = com.mojang.brigadier.arguments.StringArgumentType.getString(context, "action_id");
                             NameAndId profile = GameProfileArgument.getGameProfiles(context, "target").iterator().next();
-                            return executeActionCommand(source, profile, actionId);
+                            return executeActionCommand(source, profile, actionId, null);
                         })
+                        .then(Commands.argument("receiver", net.minecraft.commands.arguments.EntityArgument.player())
+                            .executes(context -> {
+                                CommandSourceStack source = context.getSource();
+                                String actionId = com.mojang.brigadier.arguments.StringArgumentType.getString(context, "action_id");
+                                NameAndId profile = GameProfileArgument.getGameProfiles(context, "target").iterator().next();
+                                ServerPlayer receiver = net.minecraft.commands.arguments.EntityArgument.getPlayer(context, "receiver");
+                                return executeActionCommand(source, profile, actionId, receiver);
+                            })
+                        )
                     )
                 )
             )
@@ -817,20 +833,56 @@ public class InvSeeMod implements ModInitializer {
                 return 1;
     }
 
-    private static int executeActionCommand(CommandSourceStack source, NameAndId profile, String actionId) {
+    private static int executeActionCommand(CommandSourceStack source, NameAndId profile, String actionId, ServerPlayer receiverPlayer) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
         ServerPlayer p = source.getServer().getPlayerList().getPlayer(profile.id());
         if (p != null) {
             if (actionId.equals("#heal")) { p.setHealth(p.getMaxHealth()); source.sendSystemMessage(Component.literal("§aPlayer fully healed!")); }
             else if (actionId.equals("#feed")) { p.getFoodData().setFoodLevel(20); source.sendSystemMessage(Component.literal("§aPlayer fully fed!")); }
             else if (actionId.equals("#clear_inv")) { p.getInventory().clearContent(); source.sendSystemMessage(Component.literal("§aInventory cleared!")); }
             else if (actionId.equals("#clear_ender")) { p.getEnderChestInventory().clearContent(); source.sendSystemMessage(Component.literal("§aEnder Chest cleared!")); }
-            else if (actionId.equals("#smite")) {
+            else if (actionId.equals("#open_ender")) {
+                ServerPlayer user = source.getPlayerOrException();
+                user.openMenu(new net.minecraft.world.SimpleMenuProvider((syncId, playerInv, pl) -> {
+                    return net.minecraft.world.inventory.ChestMenu.threeRows(syncId, playerInv, p.getEnderChestInventory());
+                }, Component.literal(Lang.get("ender_chest", profile.name()))));
+                return 1;
+            }
+            else if (actionId.equals("#lightning")) {
                 net.minecraft.world.entity.LightningBolt bolt = net.minecraft.world.entity.EntityType.LIGHTNING_BOLT.create(p.level(), net.minecraft.world.entity.EntitySpawnReason.COMMAND);
                 if (bolt != null) {
                     bolt.setPos(p.getX(), p.getY(), p.getZ());
                     p.level().addFreshEntity(bolt);
                 }
-                source.sendSystemMessage(Component.literal("§ePlayer smited!"));
+                source.sendSystemMessage(Component.literal("§ePlayer struck by lightning!"));
+            }
+            else if (actionId.equals("#tp")) {
+                String dimKey = p.level().dimension().toString();
+                dimKey = dimKey.substring(dimKey.lastIndexOf('/') + 1, dimKey.length() - 1).trim();
+                String onlineCmd = "/execute in " + dimKey + " run tp @s " + String.format(java.util.Locale.US, "%.1f %.1f %.1f", p.getX(), p.getY(), p.getZ());
+                ServerPlayer user = source.getPlayerOrException();
+                user.sendSystemMessage(Component.literal("§a" + Lang.get("click_teleport")).withStyle(style -> style.withClickEvent(new net.minecraft.network.chat.ClickEvent.SuggestCommand(onlineCmd))));
+                return 1;
+            }
+            else if (actionId.equals("#transfer_xp")) {
+                ServerPlayer receiver = receiverPlayer != null ? receiverPlayer : source.getPlayerOrException();
+                if (p == receiver) {
+                    source.sendFailure(Component.literal("§cCannot transfer XP to the same player!"));
+                    return 0;
+                }
+                int total = p.totalExperience;
+                if (total > 0) {
+                    receiver.giveExperiencePoints(total);
+                    p.experienceLevel = 0;
+                    p.experienceProgress = 0.0f;
+                    p.totalExperience = 0;
+                    p.connection.send(new net.minecraft.network.protocol.game.ClientboundSetExperiencePacket(0.0f, 0, 0));
+                    source.sendSystemMessage(Component.literal("§aTransferred " + total + " XP to " + receiver.getName().getString() + "!"));
+                }
+                return 1;
+            }
+            else if (actionId.equals("#accessories")) {
+                source.sendSystemMessage(Component.literal("§eAccessories are not fully supported yet!"));
+                return 1;
             } else {
                 source.sendFailure(Component.literal("Unknown action!"));
                 return 0;
@@ -848,7 +900,94 @@ public class InvSeeMod implements ModInitializer {
                 else if (actionId.equals("#feed")) { nbt.putInt("foodLevel", 20); changed = true; }
                 else if (actionId.equals("#clear_inv")) { nbt.put("Inventory", new net.minecraft.nbt.ListTag()); changed = true; }
                 else if (actionId.equals("#clear_ender")) { nbt.put("EnderItems", new net.minecraft.nbt.ListTag()); changed = true; }
-                else if (actionId.equals("#smite")) { source.sendSystemMessage(Component.literal("§cCannot smite offline player!")); return 0; }
+                else if (actionId.equals("#open_ender")) {
+                    ServerPlayer user = source.getPlayerOrException();
+                    net.minecraft.world.SimpleContainer offlineEnderChest = new net.minecraft.world.SimpleContainer(27) {
+                        @Override
+                        public void stopOpen(net.minecraft.world.entity.ContainerUser player) {
+                            source.getServer().execute(() -> {
+                                if (source.getServer().getPlayerList().getPlayer(profile.id()) != null) {
+                                    if (player instanceof ServerPlayer sp) {
+                                        sp.sendSystemMessage(Component.literal("§cSave aborted: player is now online!"));
+                                    }
+                                    return;
+                                }
+                                try {
+                                    net.minecraft.nbt.CompoundTag savedNbt = net.minecraft.nbt.NbtIo.readCompressed(playerFile.toPath(), net.minecraft.nbt.NbtAccounter.unlimitedHeap());
+                                    net.minecraft.nbt.ListTag newEnderTag = new net.minecraft.nbt.ListTag();
+                                    com.mojang.serialization.DynamicOps<net.minecraft.nbt.Tag> ops = source.registryAccess().createSerializationContext(net.minecraft.nbt.NbtOps.INSTANCE);
+                                    for (int i = 0; i < this.getContainerSize(); i++) {
+                                        net.minecraft.world.item.ItemStack stack = this.getItem(i);
+                                        if (!stack.isEmpty()) {
+                                            net.minecraft.nbt.Tag savedTag = net.minecraft.world.item.ItemStack.CODEC.encodeStart(ops, stack).getOrThrow();
+                                            if (savedTag instanceof net.minecraft.nbt.CompoundTag) {
+                                                net.minecraft.nbt.CompoundTag itemTag = (net.minecraft.nbt.CompoundTag) savedTag;
+                                                itemTag.putByte("Slot", (byte) i);
+                                                newEnderTag.add(itemTag);
+                                            }
+                                        }
+                                    }
+                                    savedNbt.put("EnderItems", newEnderTag);
+                                    File temp = File.createTempFile(profile.id().toString() + "-ec-", ".dat", playerFile.getParentFile());
+                                    net.minecraft.nbt.NbtIo.writeCompressed(savedNbt, temp.toPath());
+                                    File backup = new File(playerFile.getParentFile(), playerFile.getName() + "_old");
+                                    if (backup.exists()) backup.delete();
+                                    playerFile.renameTo(backup);
+                                    java.nio.file.Files.move(temp.toPath(), playerFile.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                                } catch (Exception e) {
+                                    e.printStackTrace();
+                                }
+                            });
+                        }
+                    };
+                    
+                    if (nbt.contains("EnderItems")) {
+                        net.minecraft.nbt.ListTag enderItems = nbt.getListOrEmpty("EnderItems");
+                        com.mojang.serialization.DynamicOps<net.minecraft.nbt.Tag> ops = source.registryAccess().createSerializationContext(net.minecraft.nbt.NbtOps.INSTANCE);
+                        for (int i = 0; i < enderItems.size(); ++i) {
+                            net.minecraft.nbt.CompoundTag itemTag = enderItems.getCompoundOrEmpty(i);
+                            int slot = itemTag.getByteOr("Slot", (byte) 0) & 255;
+                            net.minecraft.world.item.ItemStack stack = net.minecraft.world.item.ItemStack.CODEC.parse(ops, itemTag).result().orElse(net.minecraft.world.item.ItemStack.EMPTY);
+                            if (slot >= 0 && slot < 27) {
+                                offlineEnderChest.setItem(slot, stack);
+                            }
+                        }
+                    }
+                    
+                    user.openMenu(new net.minecraft.world.SimpleMenuProvider((syncId, playerInv, pl) -> {
+                        return net.minecraft.world.inventory.ChestMenu.threeRows(syncId, playerInv, offlineEnderChest);
+                    }, Component.literal(Lang.getFor(InvSeeMod.getClientLang(user), "ender_chest", profile.name()))));
+                    return 1;
+                }
+                else if (actionId.equals("#lightning")) { source.sendSystemMessage(Component.literal("§cCannot strike an offline player with lightning!")); return 0; }
+                else if (actionId.equals("#tp")) {
+                    ServerPlayer user = source.getPlayerOrException();
+                    net.minecraft.nbt.ListTag posTag = nbt.getListOrEmpty("Pos");
+                    String offlineCoords = "0 0 0";
+                    if (posTag.size() == 3) {
+                        offlineCoords = String.format(java.util.Locale.US, "%.1f %.1f %.1f", posTag.getDouble(0).orElse(0.0), posTag.getDouble(1).orElse(0.0), posTag.getDouble(2).orElse(0.0));
+                    }
+                    String offlineDimStr = nbt.getString("Dimension").orElse("minecraft:overworld");
+                    String offlineCmd = "/execute in " + offlineDimStr + " run tp @s " + offlineCoords;
+                    user.sendSystemMessage(Component.literal("§a" + Lang.get("click_teleport")).withStyle(style -> style.withClickEvent(new net.minecraft.network.chat.ClickEvent.SuggestCommand(offlineCmd))));
+                    return 1;
+                }
+                else if (actionId.equals("#transfer_xp")) {
+                    int xpTotal = nbt.getInt("XpTotal").orElse(0);
+                    if (xpTotal > 0) {
+                        ServerPlayer receiver = receiverPlayer != null ? receiverPlayer : source.getPlayerOrException();
+                        receiver.giveExperiencePoints(xpTotal);
+                        nbt.putInt("XpTotal", 0);
+                        nbt.putInt("XpLevel", 0);
+                        nbt.putFloat("XpP", 0f);
+                        changed = true;
+                        source.sendSystemMessage(Component.literal("§aTransferred " + xpTotal + " XP to " + receiver.getName().getString() + "!"));
+                    }
+                }
+                else if (actionId.equals("#accessories")) {
+                    source.sendSystemMessage(Component.literal("§eAccessories are not fully supported yet!"));
+                    return 1;
+                }
                 else { source.sendFailure(Component.literal("Unknown action!")); return 0; }
 
                 if (changed) {

@@ -233,15 +233,15 @@ public class InvSeeMenu extends ChestMenu {
                         boolean isInternalCmd = false;
                         if (btn.command != null && btn.command.startsWith("#")) {
                             isInternalCmd = true;
-                            if ("#xp".equals(btn.command)) { this.xpTransferAction.run(); }
-                            else if ("#enderchest".equals(btn.command)) { this.openEnderChestAction.run(); }
+                            if ("#transfer_xp".equals(btn.command)) { this.xpTransferAction.run(); }
+                            else if ("#open_ender".equals(btn.command)) { this.openEnderChestAction.run(); }
                             else if ("#tp".equals(btn.command)) { this.tpAction.run(); }
                             else if ("#clear_inv".equals(btn.command)) { if (this.clearInvAction != null) this.clearInvAction.run(); }
                             else if ("#clear_ender".equals(btn.command)) { if (this.clearEnderAction != null) this.clearEnderAction.run(); }
                             else if ("#accessories".equals(btn.command)) { if (this.accessoriesAction != null) this.accessoriesAction.run(); }
                             else if ("#heal".equals(btn.command)) { if (this.healAction != null) this.healAction.run(); }
                             else if ("#feed".equals(btn.command)) { if (this.feedAction != null) this.feedAction.run(); }
-                            else if ("#smite".equals(btn.command)) { if (this.smiteAction != null) this.smiteAction.run(); }
+                            else if ("#lightning".equals(btn.command)) { if (this.smiteAction != null) this.smiteAction.run(); }
                             else if ("#status".equals(btn.command)) { if (this.statusAction != null) this.statusAction.accept(button); }
                             // #dummy does nothing
                         }
