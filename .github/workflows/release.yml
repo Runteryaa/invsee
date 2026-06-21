@@ -18,6 +18,9 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          fetch-tags: true
       - name: Setup JDK
         uses: actions/setup-java@v5
         with:
@@ -32,14 +35,23 @@ jobs:
         run: |
           VERSION=$(grep '^mod_version=' gradle.properties | cut -d'=' -f2 | tr -d '\r')
           echo "version=v$VERSION" >> $GITHUB_OUTPUT
+      - name: Generate Changelog
+        id: changelog
+        run: |
+          LAST_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          if [ -z "$LAST_TAG" ]; then
+            git log --oneline --format="- %s" > CHANGELOG.md
+          else
+            git log ${LAST_TAG}..HEAD --oneline --format="- %s" > CHANGELOG.md
+          fi
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.get_version.outputs.version }}
           name: Release ${{ steps.get_version.outputs.version }}
-          body: ${{ github.event.inputs.changelog || github.event.head_commit.message }}
+          body_path: CHANGELOG.md
           files: build/libs/*.jar
-          generate_release_notes: true
+          generate_release_notes: false
       - name: Publish to Modrinth
         uses: Kir-Antipov/mc-publish@v3.3
         with:
@@ -48,7 +60,7 @@ jobs:
           name: Release ${{ steps.get_version.outputs.version }}
           version: ${{ steps.get_version.outputs.version }}
           version-type: beta
-          changelog: ${{ github.event.inputs.changelog || github.event.head_commit.message }}
+          changelog-file: CHANGELOG.md
           loaders: fabric
           game-versions: |
             26.1.2

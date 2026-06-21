@@ -23,7 +23,7 @@ public class InvSeeClient implements ClientModInitializer {
                 config = ClientConfig.load();
                 sendLangPreference();
                 if (context.client().player != null) {
-                    context.client().player.displayClientMessage(net.minecraft.network.chat.Component.literal("§aClient configuration reloaded!"), false);
+                    context.client().player.sendSystemMessage(net.minecraft.network.chat.Component.literal("§aClient configuration reloaded!"));
                 }
             });
         });
