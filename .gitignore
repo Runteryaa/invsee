@@ -38,3 +38,9 @@ hs_err_*.log
 replay_*.log
 *.hprof
 *.jfr
+
+
+#custom
+*agy.bat
+wiki.md
+

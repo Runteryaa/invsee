@@ -123,6 +123,9 @@ Instead of running console commands, you can attach the mod's complex internal J
 * `#clear_inv` - Instantly wipes the player's main inventory (armor and offhand included).
 * `#clear_ender` - Instantly wipes the player's Ender Chest inventory.
 * `#accessories` - Opens a 9-slot menu to view the player's accessories/trinkets (WIP).
+* `#heal` - Fully heals the target player (sets health to 20.0). Works on offline players too.
+* `#feed` - Fully feeds the target player (sets food level to 20). Works on offline players too.
+* `#smite` - Strikes the target player with a lightning bolt (Online players only).
 
 ---
 
@@ -222,6 +225,8 @@ For example, lets assume you have a mod which adds /heal command and create a bu
 Running `/invsee` without arguments opens the **Player List GUI** — a paginated 3-row chest menu showing all online and offline players. Clicking a player head opens their inventory.
 
 Running `/invsee <player>` directly opens that player's inventory screen.
+
+Running `/invsee action <action_id> <player>` directly executes a specific internal action (e.g., `#heal`, `#feed`, `#clear_inv`, `#smite`) on a target player without opening their GUI. Works on offline players too.
 
 Running `/invsee search <item_id>` scans all online and offline players to find who has a specific item in their inventory, armor slots, or ender chest (e.g., `/invsee search minecraft:diamond_block`). Very useful for tracking duplicated or illegal items.
 

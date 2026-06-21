@@ -152,6 +152,20 @@ public class InvSeeMod implements ModInitializer {
                     return openInvSee(source, user, profile, registryAccess);
                 })
             )
+            .then(Commands.literal("action")
+                .requires(source -> source.permissions().hasPermission(net.minecraft.server.permissions.Permissions.COMMANDS_GAMEMASTER))
+                .then(Commands.argument("action_id", com.mojang.brigadier.arguments.StringArgumentType.word())
+                    .suggests((context, builder) -> net.minecraft.commands.SharedSuggestionProvider.suggest(new String[]{"#clear_inv", "#clear_ender", "#heal", "#feed", "#smite"}, builder))
+                    .then(Commands.argument("target", GameProfileArgument.gameProfile())
+                        .executes(context -> {
+                            CommandSourceStack source = context.getSource();
+                            String actionId = com.mojang.brigadier.arguments.StringArgumentType.getString(context, "action_id");
+                            NameAndId profile = GameProfileArgument.getGameProfiles(context, "target").iterator().next();
+                            return executeActionCommand(source, profile, actionId);
+                        })
+                    )
+                )
+            )
             .then(Commands.literal("search")
                 .requires(source -> source.permissions().hasPermission(net.minecraft.server.permissions.Permissions.COMMANDS_GAMEMASTER))
                 .then(Commands.argument("item", net.minecraft.commands.arguments.item.ItemArgument.item(registryAccess))
@@ -435,8 +449,31 @@ public class InvSeeMod implements ModInitializer {
                             sendWebhook(Config.INSTANCE.discord_webhook_url, user.getName().getString() + " closed " + profile.name() + "'s inventory.");
                         };
 
+                        Runnable onlineHealAction = () -> {
+                            ServerPlayer p = source.getServer().getPlayerList().getPlayer(profile.id());
+                            ServerPlayer t = p != null ? p : onlineTarget;
+                            t.setHealth(t.getMaxHealth());
+                            user.sendSystemMessage(Component.literal("§aPlayer fully healed!"));
+                        };
+                        Runnable onlineFeedAction = () -> {
+                            ServerPlayer p = source.getServer().getPlayerList().getPlayer(profile.id());
+                            ServerPlayer t = p != null ? p : onlineTarget;
+                            t.getFoodData().setFoodLevel(20);
+                            user.sendSystemMessage(Component.literal("§aPlayer fully fed!"));
+                        };
+                        Runnable onlineSmiteAction = () -> {
+                            ServerPlayer p = source.getServer().getPlayerList().getPlayer(profile.id());
+                            ServerPlayer t = p != null ? p : onlineTarget;
+                            net.minecraft.world.entity.LightningBolt bolt = net.minecraft.world.entity.EntityType.LIGHTNING_BOLT.create(t.level(), net.minecraft.world.entity.EntitySpawnReason.COMMAND);
+                            if (bolt != null) {
+                                bolt.setPos(t.getX(), t.getY(), t.getZ());
+                                t.level().addFreshEntity(bolt);
+                            }
+                            user.sendSystemMessage(Component.literal("§ePlayer smited!"));
+                        };
+
                         user.openMenu(new SimpleMenuProvider((syncId, playerInv, p) -> {
-                            return new InvSeeMenu(syncId, playerInv, targetInv, onlineXpAction, onlineOpenEnderChestAction, onlineTpAction, onlineCoordsSupplier, onlineXpLevelSupplier, onlineDimSupplier, onlineStatusLoreSupplier, onlineStatusAction, commandRunner, placeholderReplacer, onlineClearInvAction, onlineClearEnderAction, onlineAccessoriesAction, onlineOnCloseAction);
+                            return new InvSeeMenu(syncId, playerInv, targetInv, onlineXpAction, onlineOpenEnderChestAction, onlineTpAction, onlineCoordsSupplier, onlineXpLevelSupplier, onlineDimSupplier, onlineStatusLoreSupplier, onlineStatusAction, commandRunner, placeholderReplacer, onlineClearInvAction, onlineClearEnderAction, onlineAccessoriesAction, onlineOnCloseAction, onlineHealAction, onlineFeedAction, onlineSmiteAction);
                         }, Component.literal(Lang.getFor(clientLang, "player_inventory", profile.name()))));
                         
                         sendWebhook(Config.INSTANCE.discord_webhook_url, user.getName().getString() + " opened " + profile.name() + "'s inventory.");
@@ -754,8 +791,20 @@ public class InvSeeMod implements ModInitializer {
                             sendWebhook(Config.INSTANCE.discord_webhook_url, user.getName().getString() + " closed " + profile.name() + "'s offline inventory.");
                         };
 
+                        Runnable offlineHealAction = () -> {
+                            nbt.putFloat("Health", 20.0f);
+                            user.sendSystemMessage(Component.literal("§aOffline player fully healed! Changes will be saved when you close the menu."));
+                        };
+                        Runnable offlineFeedAction = () -> {
+                            nbt.putInt("foodLevel", 20);
+                            user.sendSystemMessage(Component.literal("§aOffline player fully fed! Changes will be saved when you close the menu."));
+                        };
+                        Runnable offlineSmiteAction = () -> {
+                            user.sendSystemMessage(Component.literal("§cCannot smite an offline player!"));
+                        };
+
                         user.openMenu(new SimpleMenuProvider((syncId, playerInv, p) -> {
-                            return new InvSeeMenu(syncId, playerInv, offlineInv, offlineXpAction, offlineOpenEnderChestAction, offlineTpAction, () -> finalOfflineCoords, () -> offlineXpLevel, () -> offlineDim, offlineStatusLoreSupplier, null, offlineCommandRunner, offlinePlaceholderReplacer, offlineClearInvAction, offlineClearEnderAction, offlineAccessoriesAction, offlineOnCloseAction);
+                            return new InvSeeMenu(syncId, playerInv, offlineInv, offlineXpAction, offlineOpenEnderChestAction, offlineTpAction, () -> finalOfflineCoords, () -> offlineXpLevel, () -> offlineDim, offlineStatusLoreSupplier, null, offlineCommandRunner, offlinePlaceholderReplacer, offlineClearInvAction, offlineClearEnderAction, offlineAccessoriesAction, offlineOnCloseAction, offlineHealAction, offlineFeedAction, offlineSmiteAction);
                         }, Component.literal(Lang.getFor(clientLang2, "offline_inv", profile.name()))));
                         
                         sendWebhook(Config.INSTANCE.discord_webhook_url, user.getName().getString() + " opened " + profile.name() + "'s offline inventory.");
@@ -766,5 +815,61 @@ public class InvSeeMod implements ModInitializer {
                     }
 
                 return 1;
+    }
+
+    private static int executeActionCommand(CommandSourceStack source, NameAndId profile, String actionId) {
+        ServerPlayer p = source.getServer().getPlayerList().getPlayer(profile.id());
+        if (p != null) {
+            if (actionId.equals("#heal")) { p.setHealth(p.getMaxHealth()); source.sendSystemMessage(Component.literal("§aPlayer fully healed!")); }
+            else if (actionId.equals("#feed")) { p.getFoodData().setFoodLevel(20); source.sendSystemMessage(Component.literal("§aPlayer fully fed!")); }
+            else if (actionId.equals("#clear_inv")) { p.getInventory().clearContent(); source.sendSystemMessage(Component.literal("§aInventory cleared!")); }
+            else if (actionId.equals("#clear_ender")) { p.getEnderChestInventory().clearContent(); source.sendSystemMessage(Component.literal("§aEnder Chest cleared!")); }
+            else if (actionId.equals("#smite")) {
+                net.minecraft.world.entity.LightningBolt bolt = net.minecraft.world.entity.EntityType.LIGHTNING_BOLT.create(p.level(), net.minecraft.world.entity.EntitySpawnReason.COMMAND);
+                if (bolt != null) {
+                    bolt.setPos(p.getX(), p.getY(), p.getZ());
+                    p.level().addFreshEntity(bolt);
+                }
+                source.sendSystemMessage(Component.literal("§ePlayer smited!"));
+            } else {
+                source.sendFailure(Component.literal("Unknown action!"));
+                return 0;
+            }
+            sendWebhook(Config.INSTANCE.discord_webhook_url, source.getTextName() + " executed " + actionId + " on " + profile.name() + ".");
+            return 1;
+        }
+
+        File playerFile = new File(source.getServer().getWorldPath(net.minecraft.world.level.storage.LevelResource.PLAYER_DATA_DIR).toFile(), profile.id() + ".dat");
+        if (playerFile.exists()) {
+            try {
+                net.minecraft.nbt.CompoundTag nbt = net.minecraft.nbt.NbtIo.readCompressed(playerFile.toPath(), net.minecraft.nbt.NbtAccounter.unlimitedHeap());
+                boolean changed = false;
+                if (actionId.equals("#heal")) { nbt.putFloat("Health", 20.0f); changed = true; }
+                else if (actionId.equals("#feed")) { nbt.putInt("foodLevel", 20); changed = true; }
+                else if (actionId.equals("#clear_inv")) { nbt.put("Inventory", new net.minecraft.nbt.ListTag()); changed = true; }
+                else if (actionId.equals("#clear_ender")) { nbt.put("EnderItems", new net.minecraft.nbt.ListTag()); changed = true; }
+                else if (actionId.equals("#smite")) { source.sendSystemMessage(Component.literal("§cCannot smite offline player!")); return 0; }
+                else { source.sendFailure(Component.literal("Unknown action!")); return 0; }
+
+                if (changed) {
+                    File temp = File.createTempFile(profile.id().toString() + "-", ".dat", playerFile.getParentFile());
+                    net.minecraft.nbt.NbtIo.writeCompressed(nbt, temp.toPath());
+                    File backup = new File(playerFile.getParentFile(), playerFile.getName() + "_old");
+                    if (backup.exists()) backup.delete();
+                    playerFile.renameTo(backup);
+                    java.nio.file.Files.move(temp.toPath(), playerFile.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                    source.sendSystemMessage(Component.literal("§aAction " + actionId + " executed on offline player " + profile.name() + " and saved!"));
+                    sendWebhook(Config.INSTANCE.discord_webhook_url, source.getTextName() + " executed " + actionId + " on " + profile.name() + " (offline).");
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                source.sendFailure(Component.literal(Lang.get("failed_load_data")));
+                return 0;
+            }
+            return 1;
+        }
+        
+        source.sendFailure(Component.literal(Lang.get("player_never_joined")));
+        return 0;
     }
 }

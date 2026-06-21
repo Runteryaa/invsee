@@ -27,9 +27,12 @@ public class InvSeeMenu extends ChestMenu {
     private final Runnable clearEnderAction;
     private final Runnable accessoriesAction;
     private final Runnable onCloseAction;
+    private final Runnable healAction;
+    private final Runnable feedAction;
+    private final Runnable smiteAction;
 
     public InvSeeMenu(int syncId, Inventory playerInv) {
-        this(syncId, playerInv, new SimpleContainer(41), () -> {}, () -> {}, () -> {}, () -> "0 0 0", () -> 0, () -> "minecraft:overworld", () -> null, b -> {}, cmd -> {}, s -> s, () -> {}, () -> {}, () -> {}, () -> {});
+        this(syncId, playerInv, new SimpleContainer(41), () -> {}, () -> {}, () -> {}, () -> "0 0 0", () -> 0, () -> "minecraft:overworld", () -> null, b -> {}, cmd -> {}, s -> s, () -> {}, () -> {}, () -> {}, () -> {}, () -> {}, () -> {}, () -> {});
     }
 
     private static class Wrapper implements Container {
@@ -186,7 +189,7 @@ public class InvSeeMenu extends ChestMenu {
 
     private final String clientLang;
 
-    public InvSeeMenu(int syncId, Inventory playerInv, Container target, Runnable xpTransferAction, Runnable openEnderChestAction, Runnable tpAction, java.util.function.Supplier<String> coordsTextSupplier, java.util.function.Supplier<Integer> targetXpLevelSupplier, java.util.function.Supplier<String> dimensionSupplier, java.util.function.Supplier<java.util.List<Component>> statusLoreSupplier, java.util.function.Consumer<Integer> statusAction, java.util.function.Consumer<String> commandRunner, java.util.function.Function<String, String> placeholderReplacer, Runnable clearInvAction, Runnable clearEnderAction, Runnable accessoriesAction, Runnable onCloseAction) {
+    public InvSeeMenu(int syncId, Inventory playerInv, Container target, Runnable xpTransferAction, Runnable openEnderChestAction, Runnable tpAction, java.util.function.Supplier<String> coordsTextSupplier, java.util.function.Supplier<Integer> targetXpLevelSupplier, java.util.function.Supplier<String> dimensionSupplier, java.util.function.Supplier<java.util.List<Component>> statusLoreSupplier, java.util.function.Consumer<Integer> statusAction, java.util.function.Consumer<String> commandRunner, java.util.function.Function<String, String> placeholderReplacer, Runnable clearInvAction, Runnable clearEnderAction, Runnable accessoriesAction, Runnable onCloseAction, Runnable healAction, Runnable feedAction, Runnable smiteAction) {
         super(MenuType.GENERIC_9x5, syncId, playerInv, new Wrapper(target, coordsTextSupplier, targetXpLevelSupplier, dimensionSupplier, statusLoreSupplier, placeholderReplacer, playerInv.player instanceof net.minecraft.server.level.ServerPlayer sp ? InvSeeMod.getClientLang(sp) : "en_us"), 5);
         this.clientLang = playerInv.player instanceof net.minecraft.server.level.ServerPlayer sp2 ? InvSeeMod.getClientLang(sp2) : "en_us";
         this.xpTransferAction = xpTransferAction;
@@ -199,6 +202,9 @@ public class InvSeeMenu extends ChestMenu {
         this.clearEnderAction = clearEnderAction;
         this.accessoriesAction = accessoriesAction;
         this.onCloseAction = onCloseAction;
+        this.healAction = healAction;
+        this.feedAction = feedAction;
+        this.smiteAction = smiteAction;
 
         Container wrapped = this.getContainer();
 
@@ -233,6 +239,9 @@ public class InvSeeMenu extends ChestMenu {
                             else if ("#clear_inv".equals(btn.command)) { if (this.clearInvAction != null) this.clearInvAction.run(); }
                             else if ("#clear_ender".equals(btn.command)) { if (this.clearEnderAction != null) this.clearEnderAction.run(); }
                             else if ("#accessories".equals(btn.command)) { if (this.accessoriesAction != null) this.accessoriesAction.run(); }
+                            else if ("#heal".equals(btn.command)) { if (this.healAction != null) this.healAction.run(); }
+                            else if ("#feed".equals(btn.command)) { if (this.feedAction != null) this.feedAction.run(); }
+                            else if ("#smite".equals(btn.command)) { if (this.smiteAction != null) this.smiteAction.run(); }
                             else if ("#status".equals(btn.command)) { if (this.statusAction != null) this.statusAction.accept(button); }
                             // #dummy does nothing
                         }
