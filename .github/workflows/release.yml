@@ -40,9 +40,9 @@ jobs:
         run: |
           LAST_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
           if [ -z "$LAST_TAG" ]; then
-            git log --oneline --format="- %s" > CHANGELOG.md
+            git log --format="### %s%n%b" > CHANGELOG.md
           else
-            git log ${LAST_TAG}..HEAD --oneline --format="- %s" > CHANGELOG.md
+            git log ${LAST_TAG}..HEAD --format="### %s%n%b" > CHANGELOG.md
           fi
       - name: Create Release
         uses: softprops/action-gh-release@v2

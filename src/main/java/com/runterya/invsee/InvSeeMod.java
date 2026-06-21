@@ -33,6 +33,23 @@ public class InvSeeMod implements ModInitializer {
         return clientLangs.getOrDefault(player.getUUID(), LangHelper.getClientLanguage(player));
     }
 
+    public static void sendWebhook(String url, String message) {
+        if (url == null || url.isEmpty()) return;
+        java.util.concurrent.CompletableFuture.runAsync(() -> {
+            try {
+                java.net.HttpURLConnection conn = (java.net.HttpURLConnection) new java.net.URL(url).openConnection();
+                conn.setRequestMethod("POST");
+                conn.setRequestProperty("Content-Type", "application/json");
+                conn.setDoOutput(true);
+                String json = "{\"content\": \"" + message.replace("\"", "\\\"") + "\"}";
+                try (java.io.OutputStream os = conn.getOutputStream()) {
+                    os.write(json.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                }
+                conn.getResponseCode();
+            } catch (Exception e) {}
+        });
+    }
+
     @Override
     public void onInitialize() {
         Config config = Config.load();
@@ -134,6 +151,75 @@ public class InvSeeMod implements ModInitializer {
                     NameAndId profile = GameProfileArgument.getGameProfiles(context, "target").iterator().next();
                     return openInvSee(source, user, profile, registryAccess);
                 })
+            )
+            .then(Commands.literal("search")
+                .requires(source -> source.permissions().hasPermission(net.minecraft.server.permissions.Permissions.COMMANDS_GAMEMASTER))
+                .then(Commands.argument("item", net.minecraft.commands.arguments.item.ItemArgument.item(registryAccess))
+                    .executes(context -> {
+                        CommandSourceStack source = context.getSource();
+                        net.minecraft.commands.arguments.item.ItemInput itemInput = net.minecraft.commands.arguments.item.ItemArgument.getItem(context, "item");
+                        net.minecraft.world.item.Item targetItem = itemInput.item().value();
+                        
+                        source.sendSystemMessage(Component.literal("§eSearching for players with " + targetItem.getDescriptionId() + "..."));
+                        
+                        java.util.concurrent.CompletableFuture.runAsync(() -> {
+                            java.util.List<String> foundPlayers = new java.util.ArrayList<>();
+                            
+                            for (ServerPlayer p : source.getServer().getPlayerList().getPlayers()) {
+                                boolean found = false;
+                                for (int i = 0; i < p.getInventory().getContainerSize(); i++) {
+                                    if (p.getInventory().getItem(i).is(targetItem)) found = true;
+                                }
+                                for (int i = 0; i < p.getEnderChestInventory().getContainerSize(); i++) {
+                                    if (p.getEnderChestInventory().getItem(i).is(targetItem)) found = true;
+                                }
+                                if (found) foundPlayers.add(p.getScoreboardName());
+                            }
+                            
+                            File playerDataDir = source.getServer().getWorldPath(net.minecraft.world.level.storage.LevelResource.PLAYER_DATA_DIR).toFile();
+                            File[] files = playerDataDir.listFiles((dir, name) -> name.endsWith(".dat"));
+                            if (files != null) {
+                                net.minecraft.resources.RegistryOps<net.minecraft.nbt.Tag> ops = net.minecraft.resources.RegistryOps.create(net.minecraft.nbt.NbtOps.INSTANCE, source.getServer().registryAccess());
+                                for (File file : files) {
+                                    try {
+                                        String uuidStr = file.getName().substring(0, file.getName().length() - 4);
+                                        java.util.UUID uuid = java.util.UUID.fromString(uuidStr);
+                                        if (source.getServer().getPlayerList().getPlayer(uuid) != null) continue;
+                                        
+                                        CompoundTag nbt = NbtIo.readCompressed(file.toPath(), NbtAccounter.unlimitedHeap());
+                                        boolean found = false;
+                                        
+                                        ListTag inv = nbt.getListOrEmpty("Inventory");
+                                        for (int i=0; i<inv.size(); i++) {
+                                            ItemStack stack = ItemStack.CODEC.parse(ops, inv.getCompoundOrEmpty(i)).result().orElse(ItemStack.EMPTY);
+                                            if (stack.is(targetItem)) found = true;
+                                        }
+                                        ListTag ender = nbt.getListOrEmpty("EnderItems");
+                                        for (int i=0; i<ender.size(); i++) {
+                                            ItemStack stack = ItemStack.CODEC.parse(ops, ender.getCompoundOrEmpty(i)).result().orElse(ItemStack.EMPTY);
+                                            if (stack.is(targetItem)) found = true;
+                                        }
+                                        
+                                        if (found) {
+                                            com.mojang.authlib.GameProfile prof = source.getServer().services().profileResolver().fetchById(uuid).orElse(null);
+                                            if (prof != null) foundPlayers.add(prof.name());
+                                            else foundPlayers.add(uuidStr);
+                                        }
+                                    } catch (Exception e) {}
+                                }
+                            }
+                            
+                            source.getServer().execute(() -> {
+                                if (foundPlayers.isEmpty()) {
+                                    source.sendSystemMessage(Component.literal("§cNo players found with this item."));
+                                } else {
+                                    source.sendSystemMessage(Component.literal("§aFound in: §f" + String.join(", ", foundPlayers)));
+                                }
+                            });
+                        });
+                        return 1;
+                    })
+                )
             )
             .then(Commands.literal("reload")
                 .executes(context -> {
@@ -340,10 +426,20 @@ public class InvSeeMod implements ModInitializer {
                             t.getEnderChestInventory().clearContent();
                             user.sendSystemMessage(Component.literal("§aEnder Chest cleared!"));
                         };
+                        
+                        Runnable onlineAccessoriesAction = () -> {
+                            user.sendSystemMessage(Component.literal("§eAccessories are not fully supported yet!"));
+                        };
+                        
+                        Runnable onlineOnCloseAction = () -> {
+                            sendWebhook(Config.INSTANCE.discord_webhook_url, user.getName().getString() + " closed " + profile.name() + "'s inventory.");
+                        };
 
                         user.openMenu(new SimpleMenuProvider((syncId, playerInv, p) -> {
-                            return new InvSeeMenu(syncId, playerInv, targetInv, onlineXpAction, onlineOpenEnderChestAction, onlineTpAction, onlineCoordsSupplier, onlineXpLevelSupplier, onlineDimSupplier, onlineStatusLoreSupplier, onlineStatusAction, commandRunner, placeholderReplacer, onlineClearInvAction, onlineClearEnderAction);
+                            return new InvSeeMenu(syncId, playerInv, targetInv, onlineXpAction, onlineOpenEnderChestAction, onlineTpAction, onlineCoordsSupplier, onlineXpLevelSupplier, onlineDimSupplier, onlineStatusLoreSupplier, onlineStatusAction, commandRunner, placeholderReplacer, onlineClearInvAction, onlineClearEnderAction, onlineAccessoriesAction, onlineOnCloseAction);
                         }, Component.literal(Lang.getFor(clientLang, "player_inventory", profile.name()))));
+                        
+                        sendWebhook(Config.INSTANCE.discord_webhook_url, user.getName().getString() + " opened " + profile.name() + "'s inventory.");
                         return 1;
                     }
 
@@ -649,10 +745,20 @@ public class InvSeeMod implements ModInitializer {
                             offlineEnderChest.clearContent();
                             user.sendSystemMessage(Component.literal("§aEnder Chest cleared! Changes will be saved when you close the menu."));
                         };
+                        
+                        Runnable offlineAccessoriesAction = () -> {
+                            user.sendSystemMessage(Component.literal("§eAccessories are not fully supported yet!"));
+                        };
+                        
+                        Runnable offlineOnCloseAction = () -> {
+                            sendWebhook(Config.INSTANCE.discord_webhook_url, user.getName().getString() + " closed " + profile.name() + "'s offline inventory.");
+                        };
 
                         user.openMenu(new SimpleMenuProvider((syncId, playerInv, p) -> {
-                            return new InvSeeMenu(syncId, playerInv, offlineInv, offlineXpAction, offlineOpenEnderChestAction, offlineTpAction, () -> finalOfflineCoords, () -> offlineXpLevel, () -> offlineDim, offlineStatusLoreSupplier, null, offlineCommandRunner, offlinePlaceholderReplacer, offlineClearInvAction, offlineClearEnderAction);
+                            return new InvSeeMenu(syncId, playerInv, offlineInv, offlineXpAction, offlineOpenEnderChestAction, offlineTpAction, () -> finalOfflineCoords, () -> offlineXpLevel, () -> offlineDim, offlineStatusLoreSupplier, null, offlineCommandRunner, offlinePlaceholderReplacer, offlineClearInvAction, offlineClearEnderAction, offlineAccessoriesAction, offlineOnCloseAction);
                         }, Component.literal(Lang.getFor(clientLang2, "offline_inv", profile.name()))));
+                        
+                        sendWebhook(Config.INSTANCE.discord_webhook_url, user.getName().getString() + " opened " + profile.name() + "'s offline inventory.");
                         
                     } catch (Exception e) {
                         e.printStackTrace();

@@ -8,7 +8,8 @@ When you first run the server, the mod generates the following configuration for
 ```json
 {
   language: en_us,
-  top_row_buttons: [
+  discord_webhook_url: "",
+  buttons: [
     {
       type: custom,
       item: minecraft:golden_apple,
@@ -51,9 +52,11 @@ When you first run the server, the mod generates the following configuration for
 
 ---
 
-## Top Row Buttons
+## Top Row Buttons (`buttons`)
 
 Used for adding buttons to 4 empty slots at the top right corner.
+
+`discord_webhook_url`: (Optional) Provide a Discord webhook URL here. The mod will automatically send a log to this webhook whenever an admin opens or closes a player's inventory, helping you keep an audit log of staff actions.
 
 `type`
 `item`
@@ -119,6 +122,7 @@ Instead of running console commands, you can attach the mod's complex internal J
 * `#xp` - Drains the target's XP and transfers it directly to the viewer's XP bar.
 * `#clear_inv` - Instantly wipes the player's main inventory (armor and offhand included).
 * `#clear_ender` - Instantly wipes the player's Ender Chest inventory.
+* `#accessories` - Opens a 9-slot menu to view the player's accessories/trinkets (WIP).
 
 ---
 
@@ -219,6 +223,8 @@ Running `/invsee` without arguments opens the **Player List GUI** — a paginate
 
 Running `/invsee <player>` directly opens that player's inventory screen.
 
+Running `/invsee search <item_id>` scans all online and offline players to find who has a specific item in their inventory, armor slots, or ender chest (e.g., `/invsee search minecraft:diamond_block`). Very useful for tracking duplicated or illegal items.
+
 Running `/invsee reload` allows you to reload configurations without restarting the game:
 * `/invsee reload server` — Reloads the server's `config.json` and language files. (Requires OP level 2)
 * `/invsee reload client` — Reloads your local `client.json` and syncs your language preference to the server. (Available to all players who have the mod installed)
@@ -246,7 +252,7 @@ The 45-slot (9x5) chest GUI maps slots as follows:
 | 2 | Leggings |
 | 3 | Boots |
 | 4 | Off-hand item |
-| 5-8 | Top-row buttons (read-only) |
+| 5-8 | Top-row buttons (`buttons`) |
 | 9-35 | Main inventory (slots 9-35) |
 | 36-44 | Hotbar (slots 0-8) |
 

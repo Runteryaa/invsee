@@ -40,7 +40,9 @@ public class Config {
         }
     }
 
-    public java.util.List<ButtonConfig> top_row_buttons = java.util.Arrays.asList(
+    public String discord_webhook_url = "";
+    
+    public java.util.List<ButtonConfig> buttons = java.util.Arrays.asList(
         new ButtonConfig("custom", "minecraft:golden_apple", " ", java.util.Arrays.asList(
             "§c{lang:health}: {health}/{maxhealth}",
             "§6{lang:food}: {food}/20",
@@ -66,8 +68,8 @@ public class Config {
             try (FileReader reader = new FileReader(CONFIG_FILE)) {
                 INSTANCE = GSON.fromJson(reader, Config.class);
                 // Ensure buttons list is initialized if missing in config
-                if (INSTANCE.top_row_buttons == null) {
-                    INSTANCE.top_row_buttons = new Config().top_row_buttons;
+                if (INSTANCE.buttons == null) {
+                    INSTANCE.buttons = new Config().buttons;
                 }
                 return INSTANCE;
             } catch (Exception e) {

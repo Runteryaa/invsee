@@ -25,9 +25,11 @@ public class InvSeeMenu extends ChestMenu {
     private final java.util.function.Function<String, String> placeholderReplacer;
     private final Runnable clearInvAction;
     private final Runnable clearEnderAction;
+    private final Runnable accessoriesAction;
+    private final Runnable onCloseAction;
 
     public InvSeeMenu(int syncId, Inventory playerInv) {
-        this(syncId, playerInv, new SimpleContainer(41), () -> {}, () -> {}, () -> {}, () -> "0 0 0", () -> 0, () -> "minecraft:overworld", () -> null, b -> {}, cmd -> {}, s -> s, () -> {}, () -> {});
+        this(syncId, playerInv, new SimpleContainer(41), () -> {}, () -> {}, () -> {}, () -> "0 0 0", () -> 0, () -> "minecraft:overworld", () -> null, b -> {}, cmd -> {}, s -> s, () -> {}, () -> {}, () -> {}, () -> {});
     }
 
     private static class Wrapper implements Container {
@@ -66,8 +68,8 @@ public class InvSeeMenu extends ChestMenu {
         public net.minecraft.world.item.ItemStack getItem(int slot) { 
             if (slot >= 5 && slot <= 8) {
                 int buttonIndex = slot - 5;
-                if (Config.INSTANCE.top_row_buttons != null && buttonIndex < Config.INSTANCE.top_row_buttons.size()) {
-                    Config.ButtonConfig btn = Config.INSTANCE.top_row_buttons.get(buttonIndex);
+                if (Config.INSTANCE.buttons != null && buttonIndex < Config.INSTANCE.buttons.size()) {
+                    Config.ButtonConfig btn = Config.INSTANCE.buttons.get(buttonIndex);
                     if (btn == null || "empty".equals(btn.type)) return ItemStack.EMPTY;
                     
                     if ("status".equals(btn.type) && this.statusLoreSupplier != null) {
@@ -184,7 +186,7 @@ public class InvSeeMenu extends ChestMenu {
 
     private final String clientLang;
 
-    public InvSeeMenu(int syncId, Inventory playerInv, Container target, Runnable xpTransferAction, Runnable openEnderChestAction, Runnable tpAction, java.util.function.Supplier<String> coordsTextSupplier, java.util.function.Supplier<Integer> targetXpLevelSupplier, java.util.function.Supplier<String> dimensionSupplier, java.util.function.Supplier<java.util.List<Component>> statusLoreSupplier, java.util.function.Consumer<Integer> statusAction, java.util.function.Consumer<String> commandRunner, java.util.function.Function<String, String> placeholderReplacer, Runnable clearInvAction, Runnable clearEnderAction) {
+    public InvSeeMenu(int syncId, Inventory playerInv, Container target, Runnable xpTransferAction, Runnable openEnderChestAction, Runnable tpAction, java.util.function.Supplier<String> coordsTextSupplier, java.util.function.Supplier<Integer> targetXpLevelSupplier, java.util.function.Supplier<String> dimensionSupplier, java.util.function.Supplier<java.util.List<Component>> statusLoreSupplier, java.util.function.Consumer<Integer> statusAction, java.util.function.Consumer<String> commandRunner, java.util.function.Function<String, String> placeholderReplacer, Runnable clearInvAction, Runnable clearEnderAction, Runnable accessoriesAction, Runnable onCloseAction) {
         super(MenuType.GENERIC_9x5, syncId, playerInv, new Wrapper(target, coordsTextSupplier, targetXpLevelSupplier, dimensionSupplier, statusLoreSupplier, placeholderReplacer, playerInv.player instanceof net.minecraft.server.level.ServerPlayer sp ? InvSeeMod.getClientLang(sp) : "en_us"), 5);
         this.clientLang = playerInv.player instanceof net.minecraft.server.level.ServerPlayer sp2 ? InvSeeMod.getClientLang(sp2) : "en_us";
         this.xpTransferAction = xpTransferAction;
@@ -195,6 +197,8 @@ public class InvSeeMenu extends ChestMenu {
         this.placeholderReplacer = placeholderReplacer;
         this.clearInvAction = clearInvAction;
         this.clearEnderAction = clearEnderAction;
+        this.accessoriesAction = accessoriesAction;
+        this.onCloseAction = onCloseAction;
 
         Container wrapped = this.getContainer();
 
@@ -217,8 +221,8 @@ public class InvSeeMenu extends ChestMenu {
             Slot slot = this.slots.get(slotId);
             if (slot.container instanceof Wrapper && slot.getContainerSlot() >= 5 && slot.getContainerSlot() <= 8) {
                 int buttonIndex = slot.getContainerSlot() - 5;
-                if (Config.INSTANCE.top_row_buttons != null && buttonIndex < Config.INSTANCE.top_row_buttons.size()) {
-                    Config.ButtonConfig btn = Config.INSTANCE.top_row_buttons.get(buttonIndex);
+                if (Config.INSTANCE.buttons != null && buttonIndex < Config.INSTANCE.buttons.size()) {
+                    Config.ButtonConfig btn = Config.INSTANCE.buttons.get(buttonIndex);
                     if (btn != null) {
                         boolean isInternalCmd = false;
                         if (btn.command != null && btn.command.startsWith("#")) {
@@ -228,6 +232,7 @@ public class InvSeeMenu extends ChestMenu {
                             else if ("#tp".equals(btn.command)) { this.tpAction.run(); }
                             else if ("#clear_inv".equals(btn.command)) { if (this.clearInvAction != null) this.clearInvAction.run(); }
                             else if ("#clear_ender".equals(btn.command)) { if (this.clearEnderAction != null) this.clearEnderAction.run(); }
+                            else if ("#accessories".equals(btn.command)) { if (this.accessoriesAction != null) this.accessoriesAction.run(); }
                             else if ("#status".equals(btn.command)) { if (this.statusAction != null) this.statusAction.accept(button); }
                             // #dummy does nothing
                         }
@@ -251,5 +256,13 @@ public class InvSeeMenu extends ChestMenu {
             }
         }
         super.clicked(slotId, button, clickType, player);
+    }
+
+    @Override
+    public void removed(Player player) {
+        super.removed(player);
+        if (this.onCloseAction != null) {
+            this.onCloseAction.run();
+        }
     }
 }
