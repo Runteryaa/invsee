@@ -22,6 +22,7 @@ public class InvSeeMenu extends ChestMenu {
     private final java.util.function.Consumer<Integer> statusAction;
 
     private final java.util.function.Consumer<String> commandRunner;
+    private final java.util.function.Function<String, String> placeholderReplacer;
     private final Runnable clearInvAction;
     private final Runnable clearEnderAction;
 

@@ -69,13 +69,13 @@ public class InvSeeMod implements ModInitializer {
     private void registerCommands(CommandDispatcher<CommandSourceStack> dispatcher, CommandBuildContext registryAccess) {
         dispatcher.register(Commands.literal("invsee")
             .requires(source -> {
-                if (source.hasPermission(2)) return true;
+                if (source.permissions().hasPermission(net.minecraft.server.permissions.Permissions.COMMANDS_GAMEMASTER)) return true;
                 ServerPlayer player = source.getPlayer();
                 return player != null && net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.canSend(player, ClientReloadPayload.ID);
             })
             .executes(context -> {
                 CommandSourceStack source = context.getSource();
-                if (!source.hasPermission(2)) {
+                if (!source.permissions().hasPermission(net.minecraft.server.permissions.Permissions.COMMANDS_GAMEMASTER)) {
                     source.sendFailure(Component.literal("Unknown or incomplete command"));
                     return 0;
                 }
@@ -127,7 +127,7 @@ public class InvSeeMod implements ModInitializer {
                 return 1;
             })
             .then(Commands.argument("target", GameProfileArgument.gameProfile())
-                .requires(source -> source.hasPermission(2))
+                .requires(source -> source.permissions().hasPermission(net.minecraft.server.permissions.Permissions.COMMANDS_GAMEMASTER))
                 .executes(context -> {
                     CommandSourceStack source = context.getSource();
                     ServerPlayer user = source.getPlayerOrException();
@@ -139,7 +139,7 @@ public class InvSeeMod implements ModInitializer {
                 .executes(context -> {
                     CommandSourceStack source = context.getSource();
                     ServerPlayer player = source.getPlayer();
-                    if (source.hasPermission(2)) {
+                    if (source.permissions().hasPermission(net.minecraft.server.permissions.Permissions.COMMANDS_GAMEMASTER)) {
                         Config.load();
                         Lang.setLanguage(Config.INSTANCE.language);
                         source.sendSystemMessage(Component.literal("§aServer configuration reloaded!"));
@@ -152,7 +152,7 @@ public class InvSeeMod implements ModInitializer {
                     return 1;
                 })
                 .then(Commands.literal("server")
-                    .requires(source -> source.hasPermission(2))
+                    .requires(source -> source.permissions().hasPermission(net.minecraft.server.permissions.Permissions.COMMANDS_GAMEMASTER))
                     .executes(context -> {
                         Config.load();
                         Lang.setLanguage(Config.INSTANCE.language);
