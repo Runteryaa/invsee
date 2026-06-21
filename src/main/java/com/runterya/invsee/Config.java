@@ -23,6 +23,7 @@ public class Config {
         public String name = null; // Used for "custom"
         public java.util.List<String> lore = null; // Used for "custom"
         public String command = null;
+        public String permission = null;
 
         public ButtonConfig() {}
 
@@ -40,6 +41,7 @@ public class Config {
         }
     }
 
+    public boolean hide_buttons_without_permission = false;
     public String discord_webhook_url = "";
     
     public java.util.List<ButtonConfig> buttons = java.util.Arrays.asList(
@@ -52,8 +54,8 @@ public class Config {
         new ButtonConfig("custom", "minecraft:paper", "§b{lang:location}: {x} {y} {z}", java.util.Arrays.asList(
             "§7{lang:dimension}: {dimension}"
         ), "#tp"),
-        new ButtonConfig("custom", "minecraft:ender_chest", "§6{lang:open_ender_chest}", new java.util.ArrayList<>(), "#enderchest"),
-        new ButtonConfig("custom", "minecraft:experience_bottle", "§e{lang:xp_level}: {xplevel}", new java.util.ArrayList<>(), "#xp")
+        new ButtonConfig("custom", "minecraft:ender_chest", "§6{lang:open_ender_chest}", new java.util.ArrayList<>(), "#open_ender"),
+        new ButtonConfig("custom", "minecraft:experience_bottle", "§e{lang:xp_level}: {xplevel}", new java.util.ArrayList<>(), "#transfer_xp")
     );
 
     public static Config load() {

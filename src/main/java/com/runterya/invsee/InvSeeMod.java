@@ -90,19 +90,38 @@ public class InvSeeMod implements ModInitializer {
     }
 
 
+    public static boolean checkPermission(CommandSourceStack source, String permission, int defaultRequiredLevel) {
+        try {
+            Class<?> permsClass = Class.forName("me.lucko.fabric.api.permissions.v0.Permissions");
+            for (java.lang.reflect.Method m : permsClass.getMethods()) {
+                if (m.getName().equals("check") && m.getParameterCount() == 3 && m.getParameterTypes()[0].isAssignableFrom(source.getClass()) && m.getParameterTypes()[1] == String.class && m.getParameterTypes()[2] == int.class) {
+                    return (boolean) m.invoke(null, source, permission, defaultRequiredLevel);
+                }
+            }
+        } catch (Exception e) {}
+        return source.permissions().hasPermission(net.minecraft.server.permissions.Permissions.COMMANDS_GAMEMASTER);
+    }
+
+    public static boolean checkPermission(net.minecraft.world.entity.player.Player player, String permission, int defaultRequiredLevel) {
+        if (player instanceof ServerPlayer sp) {
+            try {
+                Class<?> permsClass = Class.forName("me.lucko.fabric.api.permissions.v0.Permissions");
+                for (java.lang.reflect.Method m : permsClass.getMethods()) {
+                    if (m.getName().equals("check") && m.getParameterCount() == 3 && m.getParameterTypes()[0].isAssignableFrom(sp.getClass()) && m.getParameterTypes()[1] == String.class && m.getParameterTypes()[2] == int.class) {
+                        return (boolean) m.invoke(null, sp, permission, defaultRequiredLevel);
+                    }
+                }
+            } catch (Exception e) {}
+            return sp.createCommandSourceStack().permissions().hasPermission(net.minecraft.server.permissions.Permissions.COMMANDS_GAMEMASTER);
+        }
+        return false;
+    }
+
     private void registerCommands(CommandDispatcher<CommandSourceStack> dispatcher, CommandBuildContext registryAccess) {
         dispatcher.register(Commands.literal("invsee")
-            .requires(source -> {
-                if (source.permissions().hasPermission(net.minecraft.server.permissions.Permissions.COMMANDS_GAMEMASTER)) return true;
-                ServerPlayer player = source.getPlayer();
-                return player != null && net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.canSend(player, ClientReloadPayload.ID);
-            })
+            .requires(source -> checkPermission(source, "invsee.base", 2))
             .executes(context -> {
                 CommandSourceStack source = context.getSource();
-                if (!source.permissions().hasPermission(net.minecraft.server.permissions.Permissions.COMMANDS_GAMEMASTER)) {
-                    source.sendFailure(Component.literal("Unknown or incomplete command"));
-                    return 0;
-                }
                 ServerPlayer user = source.getPlayerOrException();
                 
                 File playerDataDir = source.getServer().getWorldPath(net.minecraft.world.level.storage.LevelResource.PLAYER_DATA_DIR).toFile();
@@ -160,7 +179,7 @@ public class InvSeeMod implements ModInitializer {
                 })
             )
             .then(Commands.literal("action")
-                .requires(source -> source.permissions().hasPermission(net.minecraft.server.permissions.Permissions.COMMANDS_GAMEMASTER))
+                .requires(source -> checkPermission(source, "invsee.action", 2))
                 .then(Commands.argument("action_id", com.mojang.brigadier.arguments.StringArgumentType.word())
                     .suggests((context, builder) -> net.minecraft.commands.SharedSuggestionProvider.suggest(new String[]{"#clear_inv", "#clear_ender", "#heal", "#feed", "#lightning", "#open_ender", "#transfer_xp", "#tp", "#accessories"}, builder))
                     .then(Commands.argument("target", GameProfileArgument.gameProfile())
@@ -183,7 +202,7 @@ public class InvSeeMod implements ModInitializer {
                 )
             )
             .then(Commands.literal("search")
-                .requires(source -> source.permissions().hasPermission(net.minecraft.server.permissions.Permissions.COMMANDS_GAMEMASTER))
+                .requires(source -> checkPermission(source, "invsee.search", 2))
                 .then(Commands.argument("item", net.minecraft.commands.arguments.item.ItemArgument.item(registryAccess))
                     .executes(context -> {
                         CommandSourceStack source = context.getSource();

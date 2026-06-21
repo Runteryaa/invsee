@@ -43,8 +43,9 @@ public class InvSeeMenu extends ChestMenu {
         private final java.util.function.Supplier<java.util.List<Component>> statusLoreSupplier;
         private final java.util.function.Function<String, String> placeholderReplacer;
         private final String clientLang;
+        private final net.minecraft.server.level.ServerPlayer viewer;
         
-        public Wrapper(Container delegate, java.util.function.Supplier<String> coordsTextSupplier, java.util.function.Supplier<Integer> targetXpLevelSupplier, java.util.function.Supplier<String> dimensionSupplier, java.util.function.Supplier<java.util.List<Component>> statusLoreSupplier, java.util.function.Function<String, String> placeholderReplacer, String clientLang) { 
+        public Wrapper(Container delegate, java.util.function.Supplier<String> coordsTextSupplier, java.util.function.Supplier<Integer> targetXpLevelSupplier, java.util.function.Supplier<String> dimensionSupplier, java.util.function.Supplier<java.util.List<Component>> statusLoreSupplier, java.util.function.Function<String, String> placeholderReplacer, String clientLang, net.minecraft.server.level.ServerPlayer viewer) { 
             this.delegate = delegate;
             this.coordsTextSupplier = coordsTextSupplier;
             this.targetXpLevelSupplier = targetXpLevelSupplier;
@@ -52,6 +53,7 @@ public class InvSeeMenu extends ChestMenu {
             this.statusLoreSupplier = statusLoreSupplier;
             this.placeholderReplacer = placeholderReplacer;
             this.clientLang = clientLang;
+            this.viewer = viewer;
         }
         
         private int map(int slot) {
@@ -74,6 +76,13 @@ public class InvSeeMenu extends ChestMenu {
                 if (Config.INSTANCE.buttons != null && buttonIndex < Config.INSTANCE.buttons.size()) {
                     Config.ButtonConfig btn = Config.INSTANCE.buttons.get(buttonIndex);
                     if (btn == null || "empty".equals(btn.type)) return ItemStack.EMPTY;
+                    if (btn.permission != null && !btn.permission.isEmpty() && this.viewer != null) {
+                        if (!InvSeeMod.checkPermission(this.viewer, btn.permission, 2)) {
+                            if (Config.INSTANCE.hide_buttons_without_permission) {
+                                return ItemStack.EMPTY;
+                            }
+                        }
+                    }
                     
                     if ("status".equals(btn.type) && this.statusLoreSupplier != null) {
                         java.util.List<Component> currentLore = this.statusLoreSupplier.get();
@@ -190,7 +199,7 @@ public class InvSeeMenu extends ChestMenu {
     private final String clientLang;
 
     public InvSeeMenu(int syncId, Inventory playerInv, Container target, Runnable xpTransferAction, Runnable openEnderChestAction, Runnable tpAction, java.util.function.Supplier<String> coordsTextSupplier, java.util.function.Supplier<Integer> targetXpLevelSupplier, java.util.function.Supplier<String> dimensionSupplier, java.util.function.Supplier<java.util.List<Component>> statusLoreSupplier, java.util.function.Consumer<Integer> statusAction, java.util.function.Consumer<String> commandRunner, java.util.function.Function<String, String> placeholderReplacer, Runnable clearInvAction, Runnable clearEnderAction, Runnable accessoriesAction, Runnable onCloseAction, Runnable healAction, Runnable feedAction, Runnable smiteAction) {
-        super(MenuType.GENERIC_9x5, syncId, playerInv, new Wrapper(target, coordsTextSupplier, targetXpLevelSupplier, dimensionSupplier, statusLoreSupplier, placeholderReplacer, playerInv.player instanceof net.minecraft.server.level.ServerPlayer sp ? InvSeeMod.getClientLang(sp) : "en_us"), 5);
+        super(MenuType.GENERIC_9x5, syncId, playerInv, new Wrapper(target, coordsTextSupplier, targetXpLevelSupplier, dimensionSupplier, statusLoreSupplier, placeholderReplacer, playerInv.player instanceof net.minecraft.server.level.ServerPlayer sp ? InvSeeMod.getClientLang(sp) : "en_us", playerInv.player instanceof net.minecraft.server.level.ServerPlayer sp2 ? sp2 : null), 5);
         this.clientLang = playerInv.player instanceof net.minecraft.server.level.ServerPlayer sp2 ? InvSeeMod.getClientLang(sp2) : "en_us";
         this.xpTransferAction = xpTransferAction;
         this.openEnderChestAction = openEnderChestAction;
@@ -230,6 +239,14 @@ public class InvSeeMenu extends ChestMenu {
                 if (Config.INSTANCE.buttons != null && buttonIndex < Config.INSTANCE.buttons.size()) {
                     Config.ButtonConfig btn = Config.INSTANCE.buttons.get(buttonIndex);
                     if (btn != null) {
+                        if (btn.permission != null && !btn.permission.isEmpty()) {
+                            if (!InvSeeMod.checkPermission(player, btn.permission, 2)) {
+                                if (player instanceof net.minecraft.server.level.ServerPlayer sp) {
+                                    sp.sendSystemMessage(Component.literal("§cYou do not have permission to use this button!"));
+                                }
+                                return;
+                            }
+                        }
                         boolean isInternalCmd = false;
                         if (btn.command != null && btn.command.startsWith("#")) {
                             isInternalCmd = true;
