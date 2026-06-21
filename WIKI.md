@@ -1,11 +1,8 @@
-﻿# InvSee Mod Configuration Wiki (1.3.4+)
+# InvSee Mod Configuration Wiki (1.3.4+)
 
 The `config.json` file (located in `config/invsee/config.json`) allows you to fully customize the 4 buttons located at the top right of the InvSee menu (Slots 5, 6, 7, and 8). 
 
 You can change their order, modify their icons, add custom commands to them, remove them entirely, or create completely new custom buttons with your own items, text, and commands.
-
-In version 1.3.1+, all default buttons have been converted to fully data-driven `custom` types, meaning you have 100% control over their appearance and behavior while still maintaining language file support.
-
 ## Default Configuration
 When you first run the server, the mod generates the following configuration for the default buttons:
 ```json
@@ -22,7 +19,7 @@ When you first run the server, the mod generates the following configuration for
         {effects},
         {lastseen}
       ],
-      command: #status
+      command: #dummy
     },
     {
       type: custom,
@@ -94,6 +91,9 @@ When creating a `custom` button or assigning a `command` to any button, you can 
 * `{maxhealth}` - The maximum health of the player (online players only; shows last saved value for offline).
 * `{food}` - The current food/hunger level of the player (0-20).
 * `{xplevel}` - The current XP level of the player.
+* `{playtime}` - Total playtime of the player, formatted as `Xh Ym`.
+* `{deaths}` - Total number of times the player has died.
+* `{mob_kills}` - Total number of mobs the player has killed.
 * `{effects}` - A **special** placeholder that expands into multiple lore lines listing the player's active potion effects. Must be placed as its own lore line.
 * `{lastseen}` - A **special** placeholder that expands into a Last Seen: X ago lore line for offline players. For online players, this line is omitted. Must be placed as its own lore line.
 
@@ -113,10 +113,12 @@ To prevent your config file from breaking multi-language support (e.g. English v
 ## Internal Java Commands (Actions)
 Instead of running console commands, you can attach the mod's complex internal Java logic to any button using the following `#` prefixed commands:
 
-* `#status` - A dummy command that does nothing (useful for buttons that are strictly informational).
+* `#dummy` - A dummy command that does nothing (useful for buttons that are strictly informational).
 * `#tp` - Safely prompts the viewer in chat to teleport to the player's exact location.
 * `#enderchest` - Opens the custom GUI for the player's Ender Chest (works safely for offline NBT).
 * `#xp` - Drains the target's XP and transfers it directly to the viewer's XP bar.
+* `#clear_inv` - Instantly wipes the player's main inventory (armor and offhand included).
+* `#clear_ender` - Instantly wipes the player's Ender Chest inventory.
 
 ---
 

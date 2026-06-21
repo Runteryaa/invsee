@@ -177,6 +177,13 @@ public class InvSeeMod implements ModInitializer {
         );
     }
 
+    private static String getPlaytimeStr(int ticks) {
+        int totalSeconds = ticks / 20;
+        int hours = totalSeconds / 3600;
+        int minutes = (totalSeconds % 3600) / 60;
+        return hours + "h " + minutes + "m";
+    }
+
     private int openInvSee(CommandSourceStack source, ServerPlayer user, NameAndId profile, CommandBuildContext registryAccess) {
 
                     ServerPlayer onlineTarget = source.getServer().getPlayerList().getPlayer(profile.id());
@@ -314,12 +321,28 @@ public class InvSeeMod implements ModInitializer {
                             String dimKey = t.level().dimension().toString();
                             dimKey = dimKey.substring(dimKey.lastIndexOf('/') + 1, dimKey.length() - 1).trim();
                             res = res.replace("{dimension}", dimKey);
+                            res = res.replace("{playtime}", getPlaytimeStr(t.getStats().getValue(net.minecraft.stats.Stats.CUSTOM.get(net.minecraft.stats.Stats.PLAY_TIME))));
+                            res = res.replace("{deaths}", String.valueOf(t.getStats().getValue(net.minecraft.stats.Stats.CUSTOM.get(net.minecraft.stats.Stats.DEATHS))));
+                            res = res.replace("{mob_kills}", String.valueOf(t.getStats().getValue(net.minecraft.stats.Stats.CUSTOM.get(net.minecraft.stats.Stats.MOB_KILLS))));
                             return res;
                         };
                         String clientLang = InvSeeMod.getClientLang(user);
 
+                        Runnable onlineClearInvAction = () -> {
+                            ServerPlayer p = source.getServer().getPlayerList().getPlayer(profile.id());
+                            ServerPlayer t = p != null ? p : onlineTarget;
+                            t.getInventory().clearContent();
+                            user.sendSystemMessage(Component.literal("§aInventory cleared!"));
+                        };
+                        Runnable onlineClearEnderAction = () -> {
+                            ServerPlayer p = source.getServer().getPlayerList().getPlayer(profile.id());
+                            ServerPlayer t = p != null ? p : onlineTarget;
+                            t.getEnderChestInventory().clearContent();
+                            user.sendSystemMessage(Component.literal("§aEnder Chest cleared!"));
+                        };
+
                         user.openMenu(new SimpleMenuProvider((syncId, playerInv, p) -> {
-                            return new InvSeeMenu(syncId, playerInv, targetInv, onlineXpAction, onlineOpenEnderChestAction, onlineTpAction, onlineCoordsSupplier, onlineXpLevelSupplier, onlineDimSupplier, onlineStatusLoreSupplier, onlineStatusAction, commandRunner, placeholderReplacer);
+                            return new InvSeeMenu(syncId, playerInv, targetInv, onlineXpAction, onlineOpenEnderChestAction, onlineTpAction, onlineCoordsSupplier, onlineXpLevelSupplier, onlineDimSupplier, onlineStatusLoreSupplier, onlineStatusAction, commandRunner, placeholderReplacer, onlineClearInvAction, onlineClearEnderAction);
                         }, Component.literal(Lang.getFor(clientLang, "player_inventory", profile.name()))));
                         return 1;
                     }
@@ -597,11 +620,38 @@ public class InvSeeMod implements ModInitializer {
                             }
                             String offlineDimStr = nbt.getString("Dimension").orElse("minecraft:overworld");
                             res = res.replace("{dimension}", offlineDimStr);
+                            
+                            File statsFile = new File(source.getServer().getWorldPath(net.minecraft.world.level.storage.LevelResource.PLAYER_STATS_DIR).toFile(), profile.id() + ".json");
+                            int playtime = 0, deaths = 0, kills = 0;
+                            if (statsFile.exists()) {
+                                try (java.io.FileReader reader = new java.io.FileReader(statsFile)) {
+                                    com.google.gson.JsonObject statsObj = com.google.gson.JsonParser.parseReader(reader).getAsJsonObject();
+                                    if (statsObj.has("stats") && statsObj.getAsJsonObject("stats").has("minecraft:custom")) {
+                                        com.google.gson.JsonObject customStats = statsObj.getAsJsonObject("stats").getAsJsonObject("minecraft:custom");
+                                        if (customStats.has("minecraft:play_time")) playtime = customStats.get("minecraft:play_time").getAsInt();
+                                        if (customStats.has("minecraft:deaths")) deaths = customStats.get("minecraft:deaths").getAsInt();
+                                        if (customStats.has("minecraft:mob_kills")) kills = customStats.get("minecraft:mob_kills").getAsInt();
+                                    }
+                                } catch (Exception e) {}
+                            }
+                            res = res.replace("{playtime}", getPlaytimeStr(playtime));
+                            res = res.replace("{deaths}", String.valueOf(deaths));
+                            res = res.replace("{mob_kills}", String.valueOf(kills));
+                            
                             return res;
                         };
 
+                        Runnable offlineClearInvAction = () -> {
+                            offlineInv.clearContent();
+                            user.sendSystemMessage(Component.literal("§aInventory cleared! Changes will be saved when you close the menu."));
+                        };
+                        Runnable offlineClearEnderAction = () -> {
+                            offlineEnderChest.clearContent();
+                            user.sendSystemMessage(Component.literal("§aEnder Chest cleared! Changes will be saved when you close the menu."));
+                        };
+
                         user.openMenu(new SimpleMenuProvider((syncId, playerInv, p) -> {
-                            return new InvSeeMenu(syncId, playerInv, offlineInv, offlineXpAction, offlineOpenEnderChestAction, offlineTpAction, () -> finalOfflineCoords, () -> offlineXpLevel, () -> offlineDim, offlineStatusLoreSupplier, null, offlineCommandRunner, offlinePlaceholderReplacer);
+                            return new InvSeeMenu(syncId, playerInv, offlineInv, offlineXpAction, offlineOpenEnderChestAction, offlineTpAction, () -> finalOfflineCoords, () -> offlineXpLevel, () -> offlineDim, offlineStatusLoreSupplier, null, offlineCommandRunner, offlinePlaceholderReplacer, offlineClearInvAction, offlineClearEnderAction);
                         }, Component.literal(Lang.getFor(clientLang2, "offline_inv", profile.name()))));
                         
                     } catch (Exception e) {

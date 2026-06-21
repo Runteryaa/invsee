@@ -46,7 +46,7 @@ public class Config {
             "§6{lang:food}: {food}/20",
             "{effects}",
             "{lastseen}"
-        ), "#status"),
+        ), "#dummy"),
         new ButtonConfig("custom", "minecraft:paper", "§b{lang:location}: {x} {y} {z}", java.util.Arrays.asList(
             "§7{lang:dimension}: {dimension}"
         ), "#tp"),
